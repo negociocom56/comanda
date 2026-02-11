@@ -3,8 +3,9 @@
 // ============================================
 
 // URL de tu Google Apps Script (Web App)
-// Reemplazá esto con tu URL después de hacer el deploy
-const API_URL = 'https://script.google.com/macros/s/AKfycbyR6xGo_kAXXV1WtdBwFgW3DBLB9FkgxhFOQy4aRjDE0AcCqTYisDK5gp4Odc-WdtuYJg/exec';
+// Usando proxy CORS para evitar errores de preflight OPTIONS
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyR6xGo_kAXXV1WtdBwFgW3DBLB9FkgxhFOQy4aRjDE0AcCqTYisDK5gp4Odc-WdtuYJg/exec';
+const API_URL = `https://corsproxy.io/?${encodeURIComponent(APPS_SCRIPT_URL)}`;
 
 // Estado global
 let productos = [];
