@@ -166,6 +166,21 @@ async function renderNuevoPedido(container) {
             </div>
             
             <div class="form-group">
+                <label class="form-label">Nombre del Cliente</label>
+                <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Celular (WhatsApp)</label>
+                <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Domicilio de Entrega</label>
+                <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
+            </div>
+            
+            <div class="form-group">
                 <label class="form-label">Observaciones (opcional)</label>
                 <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
             </div>
@@ -233,12 +248,20 @@ function calcularTotal() {
 }
 
 async function confirmarPedido() {
+    const nombre = document.getElementById('nombreCliente').value.trim();
+    const celular = document.getElementById('celularCliente').value.trim();
+    const domicilio = document.getElementById('domicilioCliente').value.trim();
     const observaciones = document.getElementById('observaciones').value;
     const metodoPago = document.getElementById('metodoPago').value;
     const total = calcularTotal();
 
     if (pedidoActual.length === 0) {
         showToast('El pedido está vacío');
+        return;
+    }
+
+    if (!nombre) {
+        showToast('Por favor ingresá el nombre del cliente');
         return;
     }
 
@@ -250,7 +273,10 @@ async function confirmarPedido() {
             items: pedidoActual,
             total: total,
             metodoPago: metodoPago,
-            observaciones: observaciones
+            observaciones: observaciones,
+            nombre: nombre,
+            domicilio: domicilio,
+            celular: celular
         });
 
         hideLoading();
@@ -343,12 +369,19 @@ async function renderPedidos(container) {
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">${pedido.id}</div>
+                            <div class="card-title">
+                                ${pedido.id} 
+                                <span style="font-size: 0.9em; font-weight: normal; color: #555;">
+                                    - ${pedido.nombre || 'Cliente'}
+                                </span>
+                            </div>
                             <div class="card-subtitle">${formatDateTime(pedido.fecha)}</div>
+                            ${pedido.domicilio ? `<div style="font-size: 0.9em; margin-top: 2px;">📍 ${pedido.domicilio}</div>` : ''}
+                            ${pedido.celular ? `<div style="font-size: 0.9em; margin-top: 2px;">📱 ${pedido.celular}</div>` : ''}
                         </div>
-                        <div>
+                        <div style="text-align: right;">
                             ${estadoBadge}
-                            ${metodoBadge}
+                            <div style="margin-top: 4px;">${metodoBadge}</div>
                         </div>
                     </div>
                     <div class="card-body">
