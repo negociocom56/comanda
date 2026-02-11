@@ -3,9 +3,8 @@
 // ============================================
 
 // URL de tu Google Apps Script (Web App)
-// Usando proxy CORS para evitar errores de preflight OPTIONS
+// URL de tu Google Apps Script (Web App)
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyR6xGo_kAXXV1WtdBwFgW3DBLB9FkgxhFOQy4aRjDE0AcCqTYisDK5gp4Odc-WdtuYJg/exec';
-const API_URL = `https://corsproxy.io/?${encodeURIComponent(APPS_SCRIPT_URL)}`;
 
 // Estado global
 let productos = [];
@@ -625,8 +624,17 @@ async function renderHistorialCajas(container) {
 // ============================================
 
 async function apiGet(path, params = {}) {
-    const queryString = new URLSearchParams({ path, ...params }).toString();
-    const response = await fetch(`${API_URL}?${queryString}`);
+    // Construir URL completa con parámetros
+    const targetUrl = new URL(APPS_SCRIPT_URL);
+    targetUrl.searchParams.append('path', path);
+    for (const key in params) {
+        targetUrl.searchParams.append(key, params[key]);
+    }
+
+    // Usar proxy
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
+
+    const response = await fetch(proxyUrl);
 
     if (!response.ok) {
         throw new Error('Error en la petición');
@@ -636,7 +644,10 @@ async function apiGet(path, params = {}) {
 }
 
 async function apiPost(data) {
-    const response = await fetch(API_URL, {
+    // Usar proxy para POST también
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(APPS_SCRIPT_URL)}`;
+
+    const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
