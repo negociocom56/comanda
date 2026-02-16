@@ -12,8 +12,14 @@ let pedidosDelDia = [];
 // INICIALIZACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    window.addEventListener('hashchange', renderPage);
-    renderPage();
+    console.log('App inicializando...');
+    try {
+        window.addEventListener('hashchange', renderPage);
+        renderPage();
+    } catch (error) {
+        console.error('Error fatal al iniciar:', error);
+        alert('Error al iniciar la app: ' + error.message);
+    }
 });
 
 // ============================================
@@ -98,7 +104,9 @@ const CRED_USER = 'b3BlcmFkb3I='; // operador (Base64)
 const CRED_PASS = 'Y29tMDI2';     // com026 (Base64)
 
 function isAuthenticated() {
-    return localStorage.getItem('comanda_auth') === 'true';
+    const auth = localStorage.getItem('comanda_auth') === 'true';
+    console.log('Auth check:', auth);
+    return auth;
 }
 
 function login() {
