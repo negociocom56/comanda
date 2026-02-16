@@ -774,6 +774,10 @@ async function apiGet(path, params = {}) {
     // Construir URL completa con parámetros
     const targetUrl = new URL(APPS_SCRIPT_URL);
     targetUrl.searchParams.append('path', path);
+
+    // Agregar timestamp para evitar cache
+    targetUrl.searchParams.append('_t', new Date().getTime());
+
     for (const key in params) {
         targetUrl.searchParams.append(key, params[key]);
     }
