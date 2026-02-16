@@ -603,6 +603,61 @@ async function confirmarCierreCaja() {
 }
 
 // ============================================
+// PANTALLA: HISTORIAL DE CAJAS
+// ============================================
+
+async function renderHistorialCajas(container) {
+    showLoading();
+
+    try {
+        const response = await apiGet('cajas');
+        const cajas = response.cajas || [];
+
+        hideLoading();
+
+        if (cajas.length === 0) {
+            container.innerHTML = `
+                <div class="card text-center">
+                    <p class="text-muted">No hay cajas cerradas aún</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="table-responsive"><table>';
+        html += `
+            <tr>
+                <th>Fecha</th>
+                <th>MP</th>
+                <th>Efectivo</th>
+                <th>Total</th>
+                <th>Pedidos</th>
+            </tr>
+        `;
+
+        cajas.forEach(caja => {
+            html += `
+                <tr>
+                    <td>${formatDate(new Date(caja.fecha))}</td>
+                    <td>$${formatCurrency(caja.totalMercadoPago)}</td>
+                    <td>$${formatCurrency(caja.totalEfectivo)}</td>
+                    <td><strong>$${formatCurrency(caja.totalGeneral)}</strong></td>
+                    <td>${caja.cantidadPedidos}</td>
+                </tr>
+            `;
+        });
+
+        html += '</table></div>';
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        hideLoading();
+        showToast('Error: ' + error.message);
+    }
+}
+
+// ============================================
 // PANTALLA: GESTIÓN DE PRODUCTOS
 // ============================================
 
