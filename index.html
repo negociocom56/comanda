@@ -4,33 +4,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comanda Digital</title>
-    <meta name="description" content="Sistema simple de gestión de pedidos para emprendimientos gastronómicos">
+    <title>Comanda Digital - Sistema de Pedidos</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/8099/8099549.png" type="image/x-icon">
 </head>
 
 <body>
-    <!-- Header -->
-    <header id="header">
-        <button id="btn-home" class="btn-icon" onclick="location.hash='home'">
-            🏠 Inicio
+    <header>
+        <button class="btn-icon" id="btn-back" onclick="location.hash='home'">
+            <i class="fas fa-home"></i>
         </button>
-        <h1 id="header-title">Comanda Digital</h1>
+        <h1 id="header-title">Sistema de Comanda Electrónica 🖥️</h1>
         <div class="spacer"></div>
     </header>
 
-    <!-- Contenedor principal -->
     <main id="app-container">
-        <!-- El contenido se renderiza dinámicamente aquí -->
+        <div class="loading-screen">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <h2>Sistema de Comanda Electrónica 🖥️</h2>
+                <p class="tagline">Gestión inteligente de pedidos</p>
+            </div>
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando...</p>
+            </div>
+        </div>
     </main>
 
-    <!-- Toast para notificaciones -->
-    <div id="toast" class="toast"></div>
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="https://synergydev.com.ar/logo-bimi.svg" alt="Synergy.Dev"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="footer-logo-fallback">
+                    <span class="logo-s">S</span>
+                    <span class="logo-text">YNERGY.DEV</span>
+                </div>
+            </div>
+            <div class="footer-text">
+                <p>Desarrollado por <strong>Synergy Dev</strong></p>
+                <p class="copyright">Todos los derechos reservados © 2026</p>
+            </div>
+            <div class="footer-social">
+                <a href="https://api.whatsapp.com/send?phone=5493812096199&text=Hola,%20mi%20consulta%20es%20la%20siguiente:"
+                    class="social-link"><i class="fa-brands fa-whatsapp"></i></a>
+                <a href="https://www.linkedin.com/company/synergydev" class="social-link"><i
+                        class="fab fa-linkedin"></i></a>
+                <a href="https://synergydev.com.ar/" class="social-link"><i class="fas fa-globe"></i></a>
+            </div>
+        </div>
+    </footer>
 
-    <!-- Loading overlay -->
+    <div id="toast" class="toast">
+        <i class="fas fa-info-circle"></i>
+        <span id="toast-message"></span>
+    </div>
+
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <p>Cargando...</p>
+        <p>Procesando...</p>
     </div>
 
     <script src="app.js"></script>

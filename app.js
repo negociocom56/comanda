@@ -1,9 +1,6 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-
-// URL de tu Google Apps Script (Web App)
-// URL de tu Google Apps Script (Web App)
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyR6xGo_kAXXV1WtdBwFgW3DBLB9FkgxhFOQy4aRjDE0AcCqTYisDK5gp4Odc-WdtuYJg/exec';
 
 // Estado global
@@ -14,9 +11,7 @@ let pedidosDelDia = [];
 // ============================================
 // INICIALIZACIÓN
 // ============================================
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Cargar página inicial
     window.addEventListener('hashchange', renderPage);
     renderPage();
 });
@@ -24,19 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 // ROUTER
 // ============================================
-
 function renderPage() {
     const page = location.hash.slice(1) || 'home';
-    // Mostrar título
     const container = document.getElementById('app-container');
     const headerTitle = document.getElementById('header-title');
+    const btnBack = document.getElementById('btn-back');
 
-    // El botón home siempre es visible ahora
+    // Mostrar/ocultar botón de atrás
+    if (page === 'home') {
+        btnBack.classList.add('hidden');
+    } else {
+        btnBack.classList.remove('hidden');
+    }
 
     // Renderizar página correspondiente
     switch (page) {
         case 'home':
-            headerTitle.textContent = 'Comanda Digital';
+            headerTitle.textContent = 'Comanda Electrónica 🖥️';
             renderHome(container);
             break;
         case 'nuevo-pedido':
@@ -71,28 +70,45 @@ function volverAtras() {
 // ============================================
 // PANTALLA: HOME
 // ============================================
-
 function renderHome(container) {
     container.innerHTML = `
+        <div class="welcome-card card mb-2" style="background: var(--gradient-primary); color: white; border: none;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-utensils" style="font-size: 1.75rem;"></i>
+                </div>
+                <div>
+                    <h2 style="color: white; margin: 0; font-size: 1.5rem;">Bienvenido</h2>
+                    <p style="margin: 0; opacity: 0.9;">Gestión inteligente de pedidos</p>
+                </div>
+            </div>
+        </div>
+        
         <div class="btn-grid">
             <button class="btn btn-primary" onclick="location.hash='nuevo-pedido'">
-                📝 Nuevo Pedido
+                <i class="fas fa-plus-circle"></i>
+                Nuevo Pedido
             </button>
             <button class="btn btn-info" onclick="location.hash='pedidos'">
-                📋 Pedidos del Día
+                <i class="fas fa-clipboard-list"></i>
+                Pedidos del Día
             </button>
             <button class="btn btn-warning" onclick="location.hash='cerrar-caja'">
-                💰 Cerrar Caja
+                <i class="fas fa-cash-register"></i>
+                Cerrar Caja
             </button>
             <button class="btn btn-secondary" onclick="location.hash='historial-cajas'">
-                📊 Historial de Cajas
+                <i class="fas fa-chart-line"></i>
+                Historial de Cajas
             </button>
-            <button class="btn btn-info" onclick="location.hash='gestionar-productos'" style="background-color: #6c757d; border-color: #6c757d;">
-                🛒 Gestionar Productos
+            <button class="btn btn-info" onclick="location.hash='gestionar-productos'" style="background: var(--gradient-dark); border: none;">
+                <i class="fas fa-boxes"></i>
+                Gestionar Productos
             </button>
-            <button class="btn btn-light" disabled style="color: #999; border: 1px dashed #ccc; background-color: #f8f9fa;">
-                📈 Métricas 
-                <div style="font-size: 0.75rem; margin-top: 2px;">(Solo Plan Premium)</div>
+            <button class="btn btn-light" disabled style="opacity: 0.6; cursor: not-allowed;">
+                <i class="fas fa-chart-bar"></i>
+                Métricas
+                <div style="font-size: 0.75rem; margin-top: 2px; opacity: 0.7;">(Solo Plan Premium)</div>
             </button>
         </div>
     `;
@@ -101,18 +117,15 @@ function renderHome(container) {
 // ============================================
 // PANTALLA: NUEVO PEDIDO
 // ============================================
-
 async function renderNuevoPedido(container) {
     showLoading();
 
-    // Cargar productos si no están en memoria
     if (productos.length === 0) {
         await cargarProductos();
     }
 
     hideLoading();
 
-    // Agrupar productos por categoría
     const categorias = {};
     productos.forEach(p => {
         if (!categorias[p.categoria]) {
@@ -123,9 +136,13 @@ async function renderNuevoPedido(container) {
 
     let html = '<div class="mb-2">';
 
-    // Renderizar productos por categoría
     for (const [categoria, prods] of Object.entries(categorias)) {
-        html += `<h2 class="mb-1">${categoria}</h2>`;
+        html += `
+            <h2 style="margin-top: 1.5rem;">
+                <i class="fas fa-tag" style="font-size: 1.25rem;"></i>
+                ${categoria}
+            </h2>
+        `;
 
         prods.forEach(producto => {
             const cantidad = getCantidadEnPedido(producto.id);
@@ -137,9 +154,13 @@ async function renderNuevoPedido(container) {
                     </div>
                     <div class="producto-precio">$${formatCurrency(producto.precio)}</div>
                     <div class="producto-actions">
-                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">−</button>
+                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">
+                            <i class="fas fa-minus"></i>
+                        </button>
                         <span class="cantidad-display">${cantidad}</span>
-                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', 1)">+</button>
+                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', 1)">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -148,14 +169,13 @@ async function renderNuevoPedido(container) {
 
     html += '</div>';
 
-    // Resumen del pedido
     const total = calcularTotal();
     const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
 
     if (itemsCount > 0) {
         html += `
             <div class="resumen-pedido">
-                <h3>Resumen del Pedido</h3>
+                <h3><i class="fas fa-shopping-cart"></i> Resumen del Pedido</h3>
                 <div class="resumen-items">
                     ${pedidoActual.map(item => `
                         <div class="resumen-item">
@@ -170,47 +190,58 @@ async function renderNuevoPedido(container) {
                 </div>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">Nombre del Cliente <span style="color:red">*</span></label>
-                <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
-                <small class="text-muted">Mínimo 3 caracteres</small>
+            <div class="card">
+                <h3 style="margin-bottom: 1.25rem; font-size: 1.125rem;">
+                    <i class="fas fa-user"></i> Datos del Cliente
+                </h3>
+                
+                <div class="form-group">
+                    <label class="form-label">Nombre del Cliente <span style="color: var(--danger-500);">*</span></label>
+                    <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
+                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Mínimo 3 caracteres</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-mobile-alt"></i> Celular (WhatsApp)</label>
+                    <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
+                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Solo números, sin guiones ni espacios (opcional)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-map-marker-alt"></i> Domicilio de Entrega</label>
+                    <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-comment-alt"></i> Observaciones</label>
+                    <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-credit-card"></i> Método de Pago</label>
+                    <select id="metodoPago" class="form-select">
+                        <option value="mercadopago"><i class="fas fa-qrcode"></i> Mercado Pago</option>
+                        <option value="efectivo"><i class="fas fa-money-bill-wave"></i> Efectivo</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="confirmarPedido()" style="margin-top: 1.5rem;">
+                    <i class="fas fa-check-circle"></i>
+                    Confirmar Pedido
+                </button>
+                <button class="btn btn-danger" onclick="cancelarPedido()">
+                    <i class="fas fa-times-circle"></i>
+                    Cancelar
+                </button>
             </div>
-            
-            <div class="form-group">
-                <label class="form-label">Celular (WhatsApp)</label>
-                <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
-                <small class="text-muted">Solo números, sin guiones ni espacios (opcional)</small>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Domicilio de Entrega</label>
-                <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Observaciones (opcional)</label>
-                <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Método de Pago</label>
-                <select id="metodoPago" class="form-select">
-                    <option value="mercadopago">💳 Mercado Pago</option>
-                    <option value="efectivo">💵 Efectivo</option>
-                </select>
-            </div>
-            
-            <button class="btn btn-primary" onclick="confirmarPedido()">
-                ✅ Confirmar Pedido
-            </button>
-            <button class="btn btn-danger" onclick="cancelarPedido()">
-                ❌ Cancelar
-            </button>
         `;
     } else {
         html += `
-            <div class="card text-center">
-                <p class="text-muted">Agregá productos al pedido usando los botones +</p>
+            <div class="card text-center" style="padding: 3rem 2rem;">
+                <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                    <i class="fas fa-shopping-basket" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                </div>
+                <p class="text-muted" style="font-size: 1.125rem;">Agregá productos al pedido usando los botones +</p>
             </div>
         `;
     }
@@ -226,18 +257,15 @@ function getCantidadEnPedido(productoId) {
 function cambiarCantidad(productoId, delta) {
     const producto = productos.find(p => p.id === productoId);
     if (!producto) return;
-
     const itemIndex = pedidoActual.findIndex(p => p.id === productoId);
 
     if (itemIndex >= 0) {
-        // Ya existe en el pedido
         pedidoActual[itemIndex].cantidad += delta;
 
         if (pedidoActual[itemIndex].cantidad <= 0) {
             pedidoActual.splice(itemIndex, 1);
         }
     } else if (delta > 0) {
-        // Agregar nuevo item
         pedidoActual.push({
             id: producto.id,
             producto: producto.nombre,
@@ -246,7 +274,6 @@ function cambiarCantidad(productoId, delta) {
         });
     }
 
-    // Re-renderizar
     renderPage();
 }
 
@@ -272,7 +299,6 @@ async function confirmarPedido() {
         return;
     }
 
-    // Validar celular si se ingresó
     if (celular && !/^\d{8,15}$/.test(celular.replace(/\s/g, ''))) {
         showToast('El celular debe contener solo números (mínimo 8)');
         return;
@@ -295,11 +321,10 @@ async function confirmarPedido() {
         hideLoading();
 
         if (response.success) {
-            // Mostrar link de pago si es Mercado Pago
             if (metodoPago === 'mercadopago' && response.linkPago) {
                 mostrarLinkPago(response);
             } else {
-                showToast('Pedido creado exitosamente');
+                showToast('✅ Pedido creado exitosamente');
                 pedidoActual = [];
                 location.hash = 'pedidos';
             }
@@ -316,29 +341,35 @@ function mostrarLinkPago(pedidoData) {
     const container = document.getElementById('app-container');
     container.innerHTML = `
         <div class="card text-center">
-            <h2 class="mb-1">✅ Pedido Creado</h2>
-            <p class="mb-2">ID: <strong>${pedidoData.id}</strong></p>
+            <div style="width: 80px; height: 80px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                <i class="fas fa-check-circle" style="font-size: 2.5rem; color: var(--primary-600);"></i>
+            </div>
+            <h2 style="justify-content: center; margin-bottom: 0.5rem;">Pedido Creado</h2>
+            <p class="text-muted">ID: ${pedidoData.id}</p>
             
             <div class="qr-container">
-                <h3>Escaneá el QR para pagar</h3>
+                <h3><i class="fas fa-qrcode"></i> Escaneá el QR para pagar</h3>
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(pedidoData.linkPago)}" alt="QR Mercado Pago">
             </div>
             
-            <p class="mb-1">O copiá el link:</p>
-            <input type="text" class="form-input mb-2" value="${pedidoData.linkPago}" readonly onclick="this.select()">
+            <p class="mb-1" style="font-weight: 600;">O copiá el link:</p>
+            <input type="text" class="form-input mb-2" value="${pedidoData.linkPago}" readonly onclick="this.select()" style="text-align: center; font-family: monospace;">
             
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <button class="btn btn-primary" onclick="window.open('${pedidoData.linkPago}', '_blank')">
-                    💳 Abrir Mercado Pago
+                    <i class="fas fa-external-link-alt"></i>
+                    Abrir Mercado Pago
                 </button>
 
                 ${pedidoData.celular ? `
-                <button class="btn btn-success" onclick="enviarWhatsApp('${pedidoData.celular}', '${pedidoData.nombre}', '${pedidoData.linkPago}')" style="background-color: #25D366; color: white;">
-                    📱 Enviar por WhatsApp
-                </button>
+                    <button class="btn btn-success" onclick="enviarWhatsApp('${pedidoData.celular}', '${pedidoData.nombre}', '${pedidoData.linkPago}')" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none;">
+                        <i class="fab fa-whatsapp"></i>
+                        Enviar por WhatsApp
+                    </button>
                 ` : ''}
                 
                 <button class="btn btn-secondary" onclick="pedidoActual = []; location.hash='pedidos'">
+                    <i class="fas fa-clipboard-list"></i>
                     Ver Pedidos del Día
                 </button>
             </div>
@@ -347,11 +378,9 @@ function mostrarLinkPago(pedidoData) {
 }
 
 function enviarWhatsApp(celular, nombre, link) {
-    // Limpiar celular (dejar solo números)
     const telefono = celular.replace(/\D/g, '');
-    const codigoPais = '54'; // Argentina por defecto
+    const codigoPais = '54';
     const numeroCompleto = telefono.startsWith('54') ? telefono : codigoPais + telefono;
-
     const mensaje = `Hola ${nombre}! Te envío el link de pago de tu pedido: ${link}`;
     const url = `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensaje)}`;
 
@@ -368,10 +397,8 @@ function cancelarPedido() {
 // ============================================
 // PANTALLA: PEDIDOS DEL DÍA
 // ============================================
-
 async function renderPedidos(container) {
     showLoading();
-
     const fecha = getFechaHoy();
 
     try {
@@ -382,9 +409,13 @@ async function renderPedidos(container) {
 
         if (pedidosDelDia.length === 0) {
             container.innerHTML = `
-                <div class="card text-center">
-                    <p class="text-muted">No hay pedidos para hoy</p>
-                    <button class="btn btn-primary mt-1" onclick="location.hash='nuevo-pedido'">
+                <div class="card text-center" style="padding: 3rem 2rem;">
+                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-inbox" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <p class="text-muted" style="font-size: 1.125rem; margin-bottom: 1.5rem;">No hay pedidos para hoy</p>
+                    <button class="btn btn-primary" onclick="location.hash='nuevo-pedido'">
+                        <i class="fas fa-plus-circle"></i>
                         Crear Primer Pedido
                     </button>
                 </div>
@@ -395,38 +426,39 @@ async function renderPedidos(container) {
         let html = '';
 
         pedidosDelDia.forEach(pedido => {
-            const estadoBadge = `<span class="badge badge-${pedido.estado}">${pedido.estado.toUpperCase()}</span>`;
-            const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? 'MP' : 'Efectivo'}</span>`;
+            const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
+            const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
 
             html += `
                 <div class="card">
                     <div class="card-header">
                         <div>
                             <div class="card-title">
-                                ${pedido.id} 
-                                <span style="font-size: 0.9em; font-weight: normal; color: #555;">
+                                <i class="fas fa-receipt" style="color: var(--primary-600);"></i>
+                                ${pedido.id}
+                                <span style="font-size: 0.9em; font-weight: normal; color: var(--gray-500);">
                                     - ${pedido.nombre || 'Cliente'}
                                 </span>
                             </div>
-                            <div class="card-subtitle">${formatDateTime(pedido.fecha)}</div>
-                            ${pedido.domicilio ? `<div style="font-size: 0.9em; margin-top: 2px;">📍 ${pedido.domicilio}</div>` : ''}
-                            ${pedido.celular ? `<div style="font-size: 0.9em; margin-top: 2px;">📱 ${pedido.celular}</div>` : ''}
+                            <div class="card-subtitle"><i class="far fa-clock"></i> ${formatDateTime(pedido.fecha)}</div>
+                            ${pedido.domicilio ? `<div style="font-size: 0.875em; margin-top: 0.5rem; color: var(--gray-600);"><i class="fas fa-map-marker-alt"></i> ${pedido.domicilio}</div>` : ''}
+                            ${pedido.celular ? `<div style="font-size: 0.875em; margin-top: 0.25rem; color: var(--gray-600);"><i class="fas fa-phone"></i> ${pedido.celular}</div>` : ''}
                         </div>
-                        <div style="text-align: right;">
+                        <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
                             ${estadoBadge}
-                            <div style="margin-top: 4px;">${metodoBadge}</div>
+                            ${metodoBadge}
                         </div>
                     </div>
                     <div class="card-body">
-                        <strong>Items:</strong>
-                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <strong style="color: var(--gray-700);"><i class="fas fa-list"></i> Items:</strong>
+                        <ul style="margin: 0.75rem 0; padding-left: 1.5rem; color: var(--gray-600);">
                             ${pedido.items.map(item => `
-                                <li>${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}</li>
+                                <li style="margin-bottom: 0.375rem;">${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}</li>
                             `).join('')}
                         </ul>
-                        ${pedido.observaciones ? `<p><strong>Obs:</strong> ${pedido.observaciones}</p>` : ''}
-                        <p style="font-size: 1.2rem; font-weight: 700; color: #4CAF50; margin-top: 0.5rem;">
-                            Total: $${formatCurrency(pedido.total)}
+                        ${pedido.observaciones ? `<p style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-comment"></i> Obs:</strong> ${pedido.observaciones}</p>` : ''}
+                        <p style="font-size: 1.375rem; font-weight: 800; color: var(--primary-600); margin-top: 1rem; letter-spacing: -0.025em;">
+                            <i class="fas fa-dollar-sign"></i> ${formatCurrency(pedido.total)}
                         </p>
                     </div>
                     <div class="card-footer">
@@ -446,28 +478,27 @@ async function renderPedidos(container) {
 
 function renderBotonesEstado(pedido) {
     let botones = '';
-
     if (pedido.estado === 'pendiente') {
         botones += `
             <button class="btn btn-small btn-primary" onclick="cambiarEstado('${pedido.id}', 'pagado')">
-                ✅ Marcar Pagado
+                <i class="fas fa-check"></i> Pagado
             </button>
             <button class="btn btn-small btn-danger" onclick="cambiarEstado('${pedido.id}', 'cancelado')">
-                ❌ Cancelar
+                <i class="fas fa-times"></i> Cancelar
             </button>
         `;
 
         if (pedido.linkPago) {
             botones += `
                 <button class="btn btn-small btn-info" onclick="window.open('${pedido.linkPago}', '_blank')">
-                    💳 Ver Link MP
+                    <i class="fas fa-link"></i> Link MP
                 </button>
             `;
         }
     } else if (pedido.estado === 'pagado') {
         botones += `
             <button class="btn btn-small btn-primary" onclick="cambiarEstado('${pedido.id}', 'entregado')">
-                📦 Marcar Entregado
+                <i class="fas fa-box"></i> Entregado
             </button>
         `;
     }
@@ -477,7 +508,6 @@ function renderBotonesEstado(pedido) {
 
 async function cambiarEstado(pedidoId, nuevoEstado) {
     showLoading();
-
     try {
         const response = await apiPost({
             action: 'actualizar_estado',
@@ -489,8 +519,6 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
 
         if (response.success) {
             showToast(`Estado actualizado a: ${nuevoEstado}`);
-            // Usar renderPedidos para recargar la lista sin recargar toda la página
-            // Pasamos el contenedor actual
             const container = document.getElementById('app-container');
             renderPedidos(container);
         } else {
@@ -505,10 +533,8 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
 // ============================================
 // PANTALLA: CERRAR CAJA
 // ============================================
-
 async function renderCerrarCaja(container) {
     showLoading();
-
     const fecha = getFechaHoy();
 
     try {
@@ -517,7 +543,6 @@ async function renderCerrarCaja(container) {
 
         hideLoading();
 
-        // Calcular totales
         let totalMP = 0;
         let totalEfectivo = 0;
         let cantidadPedidos = 0;
@@ -537,39 +562,45 @@ async function renderCerrarCaja(container) {
 
         container.innerHTML = `
             <div class="card">
-                <h2 class="mb-1">Resumen del Día</h2>
-                <p class="text-muted mb-2">${formatDate(new Date())}</p>
+                <h2 style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-calculator"></i> Resumen del Día
+                </h2>
+                <p class="text-muted mb-2" style="font-size: 0.9375rem;">${formatDate(new Date())}</p>
                 
-                <table>
-                    <tr>
-                        <th>Concepto</th>
-                        <th>Monto</th>
-                    </tr>
-                    <tr>
-                        <td>💳 Mercado Pago</td>
-                        <td><strong>$${formatCurrency(totalMP)}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>💵 Efectivo</td>
-                        <td><strong>$${formatCurrency(totalEfectivo)}</strong></td>
-                    </tr>
-                    <tr style="background: #E8F5E9;">
-                        <td><strong>TOTAL</strong></td>
-                        <td><strong style="color: #4CAF50; font-size: 1.2rem;">$${formatCurrency(totalGeneral)}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Cantidad de pedidos</td>
-                        <td><strong>${cantidadPedidos}</strong></td>
-                    </tr>
-                </table>
+                <div class="table-responsive">
+                    <table>
+                        <tr>
+                            <th><i class="fas fa-list"></i> Concepto</th>
+                            <th style="text-align: right;"><i class="fas fa-dollar-sign"></i> Monto</th>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-qrcode" style="color: var(--secondary-600);"></i> Mercado Pago</td>
+                            <td style="text-align: right;"><strong>$${formatCurrency(totalMP)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-money-bill-wave" style="color: var(--primary-600);"></i> Efectivo</td>
+                            <td style="text-align: right;"><strong>$${formatCurrency(totalEfectivo)}</strong></td>
+                        </tr>
+                        <tr style="background: var(--primary-50);">
+                            <td><strong><i class="fas fa-coins"></i> TOTAL</strong></td>
+                            <td style="text-align: right;"><strong style="color: var(--primary-600); font-size: 1.25rem;">$${formatCurrency(totalGeneral)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-shopping-bag"></i> Cantidad de pedidos</td>
+                            <td style="text-align: right;"><strong>${cantidadPedidos}</strong></td>
+                        </tr>
+                    </table>
+                </div>
             </div>
             
             <button class="btn btn-warning mt-2" onclick="confirmarCierreCaja()">
-                💰 Confirmar Cierre de Caja
+                <i class="fas fa-lock"></i>
+                Confirmar Cierre de Caja
             </button>
             
             <button class="btn btn-secondary" onclick="location.hash='historial-cajas'">
-                📊 Ver Historial
+                <i class="fas fa-history"></i>
+                Ver Historial
             </button>
         `;
 
@@ -581,7 +612,6 @@ async function renderCerrarCaja(container) {
 
 async function confirmarCierreCaja() {
     if (!confirm('¿Confirmar cierre de caja del día?')) return;
-
     showLoading();
 
     try {
@@ -604,10 +634,8 @@ async function confirmarCierreCaja() {
 // ============================================
 // PANTALLA: HISTORIAL DE CAJAS
 // ============================================
-
 async function renderHistorialCajas(container) {
     showLoading();
-
     try {
         const response = await apiGet('cajas');
         const cajas = response.cajas || [];
@@ -616,8 +644,11 @@ async function renderHistorialCajas(container) {
 
         if (cajas.length === 0) {
             container.innerHTML = `
-                <div class="card text-center">
-                    <p class="text-muted">No hay cajas cerradas aún</p>
+                <div class="card text-center" style="padding: 3rem 2rem;">
+                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-archive" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <p class="text-muted" style="font-size: 1.125rem;">No hay cajas cerradas aún</p>
                 </div>
             `;
             return;
@@ -626,11 +657,11 @@ async function renderHistorialCajas(container) {
         let html = '<div class="table-responsive"><table>';
         html += `
             <tr>
-                <th>Fecha</th>
-                <th>MP</th>
-                <th>Efectivo</th>
-                <th>Total</th>
-                <th>Pedidos</th>
+                <th><i class="far fa-calendar"></i> Fecha</th>
+                <th><i class="fas fa-qrcode"></i> MP</th>
+                <th><i class="fas fa-money-bill"></i> Efectivo</th>
+                <th><i class="fas fa-coins"></i> Total</th>
+                <th><i class="fas fa-shopping-bag"></i> Pedidos</th>
             </tr>
         `;
 
@@ -640,7 +671,7 @@ async function renderHistorialCajas(container) {
                     <td>${formatDate(new Date(caja.fecha))}</td>
                     <td>$${formatCurrency(caja.totalMercadoPago)}</td>
                     <td>$${formatCurrency(caja.totalEfectivo)}</td>
-                    <td><strong>$${formatCurrency(caja.totalGeneral)}</strong></td>
+                    <td><strong style="color: var(--primary-600);">$${formatCurrency(caja.totalGeneral)}</strong></td>
                     <td>${caja.cantidadPedidos}</td>
                 </tr>
             `;
@@ -659,15 +690,12 @@ async function renderHistorialCajas(container) {
 // ============================================
 // PANTALLA: GESTIÓN DE PRODUCTOS
 // ============================================
-
 async function renderGestionProductos(container) {
     showLoading();
-
     try {
         const response = await apiGet('productos_admin');
         const todosProductos = response.productos || [];
 
-        // Actualizar cache local también
         productos = todosProductos.filter(p => p.activo);
 
         hideLoading();
@@ -675,21 +703,24 @@ async function renderGestionProductos(container) {
         let html = `
             <div class="mb-2">
                 <button class="btn btn-primary" onclick="mostrarFormularioProducto()">
-                    ➕ Nuevo Producto
+                    <i class="fas fa-plus-circle"></i>
+                    Nuevo Producto
                 </button>
             </div>
             
-            <div id="formulario-producto" class="card mb-2 hidden" style="border-left: 5px solid #2196F3;">
-                <h3 id="form-titulo">Nuevo Producto</h3>
+            <div id="formulario-producto" class="card mb-2 hidden" style="border-left: 4px solid var(--primary-600);">
+                <h3 id="form-titulo" style="margin-bottom: 1.25rem;">
+                    <i class="fas fa-box"></i> Nuevo Producto
+                </h3>
                 <input type="hidden" id="prod-id">
                 
                 <div class="form-group">
-                    <label class="form-label">Nombre</label>
+                    <label class="form-label"><i class="fas fa-tag"></i> Nombre</label>
                     <input type="text" id="prod-nombre" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Categoría</label>
+                    <label class="form-label"><i class="fas fa-folder"></i> Categoría</label>
                     <input type="text" id="prod-categoria" class="form-input" list="categorias-list" required>
                     <datalist id="categorias-list">
                         <option value="Bebidas calientes">
@@ -701,29 +732,34 @@ async function renderGestionProductos(container) {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Precio ($)</label>
+                    <label class="form-label"><i class="fas fa-dollar-sign"></i> Precio ($)</label>
                     <input type="number" id="prod-precio" class="form-input" required min="0">
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="prod-activo" checked> Activo
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="prod-activo" checked style="width: auto;">
+                        <i class="fas fa-check-circle" style="color: var(--primary-600);"></i> Activo
                     </label>
                 </div>
                 
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-success" onclick="guardarProducto()">💾 Guardar</button>
-                    <button class="btn btn-secondary" onclick="ocultarFormularioProducto()">Cancelar</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-success" onclick="guardarProducto()" style="flex: 1;">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                    <button class="btn btn-secondary" onclick="ocultarFormularioProducto()" style="flex: 1;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
                 </div>
             </div>
 
             <div class="table-responsive">
                 <table>
                     <tr>
-                        <th>Nombre</th>
-                        <th>Precio</th>
-                        <th>Estado</th>
-                        <th>Acción</th>
+                        <th><i class="fas fa-box"></i> Nombre</th>
+                        <th><i class="fas fa-dollar-sign"></i> Precio</th>
+                        <th><i class="fas fa-toggle-on"></i> Estado</th>
+                        <th><i class="fas fa-cog"></i> Acción</th>
                     </tr>
         `;
 
@@ -734,14 +770,14 @@ async function renderGestionProductos(container) {
             html += `
                 <tr>
                     <td>
-                        <div style="font-weight: bold;">${prod.nombre}</div>
-                        <div style="font-size: 0.8em; color: #666;">${prod.categoria}</div>
+                        <div style="font-weight: 700; color: var(--gray-800);">${prod.nombre}</div>
+                        <div style="font-size: 0.8125em; color: var(--gray-500);">${prod.categoria}</div>
                     </td>
-                    <td>$${formatCurrency(prod.precio)}</td>
-                    <td><span class="badge ${estadoClass}">${estadoTexto}</span></td>
+                    <td><strong style="color: var(--primary-600);">$${formatCurrency(prod.precio)}</strong></td>
+                    <td><span class="badge ${estadoClass}"><i class="fas fa-circle" style="font-size: 0.4rem;"></i> ${estadoTexto}</span></td>
                     <td>
                         <button class="btn btn-small btn-info" onclick='editarProducto(${JSON.stringify(prod)})'>
-                            ✏️
+                            <i class="fas fa-edit"></i>
                         </button>
                     </td>
                 </tr>
@@ -760,14 +796,13 @@ async function renderGestionProductos(container) {
 function mostrarFormularioProducto(producto = null) {
     const form = document.getElementById('formulario-producto');
     const titulo = document.getElementById('form-titulo');
-
     document.getElementById('prod-id').value = producto ? producto.id : '';
     document.getElementById('prod-nombre').value = producto ? producto.nombre : '';
     document.getElementById('prod-categoria').value = producto ? producto.categoria : '';
     document.getElementById('prod-precio').value = producto ? producto.precio : '';
     document.getElementById('prod-activo').checked = producto ? producto.activo : true;
 
-    titulo.textContent = producto ? 'Editar Producto' : 'Nuevo Producto';
+    titulo.innerHTML = producto ? '<i class="fas fa-edit"></i> Editar Producto' : '<i class="fas fa-plus-circle"></i> Nuevo Producto';
     form.classList.remove('hidden');
     form.scrollIntoView({ behavior: 'smooth' });
 }
@@ -797,7 +832,7 @@ async function guardarProducto() {
     try {
         const response = await apiPost({
             action: 'gestionar_producto',
-            id: id || null, // Si es vacío, enviar null para crear
+            id: id || null,
             nombre: nombre,
             categoria: categoria,
             precio: Number(precio),
@@ -809,7 +844,7 @@ async function guardarProducto() {
         if (response.success) {
             showToast(response.message || 'Producto guardado');
             ocultarFormularioProducto();
-            renderGestionProductos(document.getElementById('app-container')); // Recargar lista
+            renderGestionProductos(document.getElementById('app-container'));
         } else {
             showToast('Error: ' + response.error);
         }
@@ -819,24 +854,18 @@ async function guardarProducto() {
     }
 }
 
-
 // ============================================
 // API CLIENT
 // ============================================
-
 async function apiGet(path, params = {}) {
-    // Construir URL completa con parámetros
     const targetUrl = new URL(APPS_SCRIPT_URL);
     targetUrl.searchParams.append('path', path);
-
-    // Agregar timestamp para evitar cache
     targetUrl.searchParams.append('_t', new Date().getTime());
 
     for (const key in params) {
         targetUrl.searchParams.append(key, params[key]);
     }
 
-    // Usar proxy
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
 
     const response = await fetch(proxyUrl);
@@ -849,9 +878,7 @@ async function apiGet(path, params = {}) {
 }
 
 async function apiPost(data) {
-    // Usar proxy para POST también
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(APPS_SCRIPT_URL)}`;
-
     const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
@@ -879,7 +906,6 @@ async function cargarProductos() {
 // ============================================
 // HELPERS
 // ============================================
-
 function formatCurrency(amount) {
     return amount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
@@ -912,9 +938,9 @@ function getFechaHoy() {
 
 function showToast(message) {
     const toast = document.getElementById('toast');
-    toast.textContent = message;
+    const toastMessage = document.getElementById('toast-message');
+    toastMessage.textContent = message;
     toast.classList.add('show');
-
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
