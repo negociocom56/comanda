@@ -124,6 +124,8 @@ function logout() {
 // PANTALLA: LOGIN
 // ============================================
 function renderLogin(container) {
+    hideLoading(); // Asegurar que no quede cargando infinito
+
     container.innerHTML = `
         <div class="card" style="max-width: 400px; margin: 2rem auto; text-align: center; padding: 2rem;">
             <div style="width: 80px; height: 80px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
