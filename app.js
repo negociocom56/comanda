@@ -878,7 +878,12 @@ async function apiGet(path, params = {}) {
 }
 
 async function apiPost(data) {
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(APPS_SCRIPT_URL)}`;
+    // Agregar timestamp para evitar caché del proxy
+    const targetUrl = new URL(APPS_SCRIPT_URL);
+    targetUrl.searchParams.append('_t', new Date().getTime());
+
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
+
     const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
