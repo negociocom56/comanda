@@ -60,6 +60,10 @@ function renderPage() {
             headerTitle.textContent = 'Historial de Cajas';
             renderHistorialCajas(container);
             break;
+        case 'gestionar-productos':
+            headerTitle.textContent = 'Gestión de Productos';
+            renderGestionProductos(container);
+            break;
         default:
             renderHome(container);
     }
@@ -87,6 +91,9 @@ function renderHome(container) {
             </button>
             <button class="btn btn-secondary" onclick="location.hash='historial-cajas'">
                 📊 Historial de Cajas
+            </button>
+            <button class="btn btn-info" onclick="location.hash='gestionar-productos'" style="background-color: #6c757d; border-color: #6c757d;">
+                🛒 Gestionar Productos
             </button>
         </div>
     `;
@@ -165,13 +172,15 @@ async function renderNuevoPedido(container) {
             </div>
             
             <div class="form-group">
-                <label class="form-label">Nombre del Cliente</label>
-                <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required>
+                <label class="form-label">Nombre del Cliente <span style="color:red">*</span></label>
+                <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
+                <small class="text-muted">Mínimo 3 caracteres</small>
             </div>
             
             <div class="form-group">
                 <label class="form-label">Celular (WhatsApp)</label>
                 <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
+                <small class="text-muted">Solo números, sin guiones ni espacios (opcional)</small>
             </div>
             
             <div class="form-group">
@@ -259,8 +268,14 @@ async function confirmarPedido() {
         return;
     }
 
-    if (!nombre) {
-        showToast('Por favor ingresá el nombre del cliente');
+    if (nombre.length < 3) {
+        showToast('El nombre debe tener al menos 3 caracteres');
+        return;
+    }
+
+    // Validar celular si se ingresó
+    if (celular && !/^\d{8,15}$/.test(celular.replace(/\s/g, ''))) {
+        showToast('El celular debe contener solo números (mínimo 8)');
         return;
     }
 
@@ -313,15 +328,35 @@ function mostrarLinkPago(pedidoData) {
             <p class="mb-1">O copiá el link:</p>
             <input type="text" class="form-input mb-2" value="${pedidoData.linkPago}" readonly onclick="this.select()">
             
-            <button class="btn btn-primary" onclick="window.open('${pedidoData.linkPago}', '_blank')">
-                Abrir Mercado Pago
-            </button>
-            
-            <button class="btn btn-secondary" onclick="pedidoActual = []; location.hash='pedidos'">
-                Ver Pedidos del Día
-            </button>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <button class="btn btn-primary" onclick="window.open('${pedidoData.linkPago}', '_blank')">
+                    💳 Abrir Mercado Pago
+                </button>
+
+                ${pedidoData.celular ? `
+                <button class="btn btn-success" onclick="enviarWhatsApp('${pedidoData.celular}', '${pedidoData.nombre}', '${pedidoData.linkPago}')" style="background-color: #25D366; color: white;">
+                    📱 Enviar por WhatsApp
+                </button>
+                ` : ''}
+                
+                <button class="btn btn-secondary" onclick="pedidoActual = []; location.hash='pedidos'">
+                    Ver Pedidos del Día
+                </button>
+            </div>
         </div>
     `;
+}
+
+function enviarWhatsApp(celular, nombre, link) {
+    // Limpiar celular (dejar solo números)
+    const telefono = celular.replace(/\D/g, '');
+    const codigoPais = '54'; // Argentina por defecto
+    const numeroCompleto = telefono.startsWith('54') ? telefono : codigoPais + telefono;
+
+    const mensaje = `Hola ${nombre}! Te envío el link de pago de tu pedido: ${link}`;
+    const url = `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensaje)}`;
+
+    window.open(url, '_blank');
 }
 
 function cancelarPedido() {
@@ -455,7 +490,10 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
 
         if (response.success) {
             showToast(`Estado actualizado a: ${nuevoEstado}`);
-            renderPage(); // Recargar
+            // Usar renderPedidos para recargar la lista sin recargar toda la página
+            // Pasamos el contenedor actual
+            const container = document.getElementById('app-container');
+            renderPedidos(container);
         } else {
             showToast('Error al actualizar estado');
         }
@@ -565,59 +603,168 @@ async function confirmarCierreCaja() {
 }
 
 // ============================================
-// PANTALLA: HISTORIAL DE CAJAS
+// PANTALLA: GESTIÓN DE PRODUCTOS
 // ============================================
 
-async function renderHistorialCajas(container) {
+async function renderGestionProductos(container) {
     showLoading();
 
     try {
-        const response = await apiGet('cajas');
-        const cajas = response.cajas || [];
+        const response = await apiGet('productos_admin');
+        const todosProductos = response.productos || [];
+
+        // Actualizar cache local también
+        productos = todosProductos.filter(p => p.activo);
 
         hideLoading();
 
-        if (cajas.length === 0) {
-            container.innerHTML = `
-                <div class="card text-center">
-                    <p class="text-muted">No hay cajas cerradas aún</p>
+        let html = `
+            <div class="mb-2">
+                <button class="btn btn-primary" onclick="mostrarFormularioProducto()">
+                    ➕ Nuevo Producto
+                </button>
+            </div>
+            
+            <div id="formulario-producto" class="card mb-2 hidden" style="border-left: 5px solid #2196F3;">
+                <h3 id="form-titulo">Nuevo Producto</h3>
+                <input type="hidden" id="prod-id">
+                
+                <div class="form-group">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" id="prod-nombre" class="form-input" required>
                 </div>
-            `;
-            return;
-        }
+                
+                <div class="form-group">
+                    <label class="form-label">Categoría</label>
+                    <input type="text" id="prod-categoria" class="form-input" list="categorias-list" required>
+                    <datalist id="categorias-list">
+                        <option value="Bebidas calientes">
+                        <option value="Bebidas frías">
+                        <option value="Panadería">
+                        <option value="Comidas">
+                        <option value="Postres">
+                    </datalist>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Precio ($)</label>
+                    <input type="number" id="prod-precio" class="form-input" required min="0">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="prod-activo" checked> Activo
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-success" onclick="guardarProducto()">💾 Guardar</button>
+                    <button class="btn btn-secondary" onclick="ocultarFormularioProducto()">Cancelar</button>
+                </div>
+            </div>
 
-        let html = '<div class="table-responsive"><table>';
-        html += `
-            <tr>
-                <th>Fecha</th>
-                <th>MP</th>
-                <th>Efectivo</th>
-                <th>Total</th>
-                <th>Pedidos</th>
-            </tr>
+            <div class="table-responsive">
+                <table>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
         `;
 
-        cajas.forEach(caja => {
+        todosProductos.forEach(prod => {
+            const estadoClass = prod.activo ? 'badge-pagado' : 'badge-cancelado';
+            const estadoTexto = prod.activo ? 'Activo' : 'Inactivo';
+
             html += `
                 <tr>
-                    <td>${formatDate(new Date(caja.fecha))}</td>
-                    <td>$${formatCurrency(caja.totalMercadoPago)}</td>
-                    <td>$${formatCurrency(caja.totalEfectivo)}</td>
-                    <td><strong>$${formatCurrency(caja.totalGeneral)}</strong></td>
-                    <td>${caja.cantidadPedidos}</td>
+                    <td>
+                        <div style="font-weight: bold;">${prod.nombre}</div>
+                        <div style="font-size: 0.8em; color: #666;">${prod.categoria}</div>
+                    </td>
+                    <td>$${formatCurrency(prod.precio)}</td>
+                    <td><span class="badge ${estadoClass}">${estadoTexto}</span></td>
+                    <td>
+                        <button class="btn btn-small btn-info" onclick='editarProducto(${JSON.stringify(prod)})'>
+                            ✏️
+                        </button>
+                    </td>
                 </tr>
             `;
         });
 
         html += '</table></div>';
-
         container.innerHTML = html;
 
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error al cargar productos: ' + error.message);
     }
 }
+
+function mostrarFormularioProducto(producto = null) {
+    const form = document.getElementById('formulario-producto');
+    const titulo = document.getElementById('form-titulo');
+
+    document.getElementById('prod-id').value = producto ? producto.id : '';
+    document.getElementById('prod-nombre').value = producto ? producto.nombre : '';
+    document.getElementById('prod-categoria').value = producto ? producto.categoria : '';
+    document.getElementById('prod-precio').value = producto ? producto.precio : '';
+    document.getElementById('prod-activo').checked = producto ? producto.activo : true;
+
+    titulo.textContent = producto ? 'Editar Producto' : 'Nuevo Producto';
+    form.classList.remove('hidden');
+    form.scrollIntoView({ behavior: 'smooth' });
+}
+
+function ocultarFormularioProducto() {
+    document.getElementById('formulario-producto').classList.add('hidden');
+}
+
+function editarProducto(producto) {
+    mostrarFormularioProducto(producto);
+}
+
+async function guardarProducto() {
+    const id = document.getElementById('prod-id').value;
+    const nombre = document.getElementById('prod-nombre').value.trim();
+    const categoria = document.getElementById('prod-categoria').value.trim();
+    const precio = document.getElementById('prod-precio').value;
+    const activo = document.getElementById('prod-activo').checked;
+
+    if (!nombre || !categoria || !precio) {
+        showToast('Completá todos los campos obligatorios');
+        return;
+    }
+
+    showLoading();
+
+    try {
+        const response = await apiPost({
+            action: 'gestionar_producto',
+            id: id || null, // Si es vacío, enviar null para crear
+            nombre: nombre,
+            categoria: categoria,
+            precio: Number(precio),
+            activo: activo
+        });
+
+        hideLoading();
+
+        if (response.success) {
+            showToast(response.message || 'Producto guardado');
+            ocultarFormularioProducto();
+            renderGestionProductos(document.getElementById('app-container')); // Recargar lista
+        } else {
+            showToast('Error: ' + response.error);
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error de conexión: ' + error.message);
+    }
+}
+
 
 // ============================================
 // API CLIENT
