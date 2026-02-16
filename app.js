@@ -90,6 +90,10 @@ function renderHome(container) {
             <button class="btn btn-info" onclick="location.hash='gestionar-productos'" style="background-color: #6c757d; border-color: #6c757d;">
                 🛒 Gestionar Productos
             </button>
+            <button class="btn btn-light" disabled style="color: #999; border: 1px dashed #ccc; background-color: #f8f9fa;">
+                📈 Métricas 
+                <div style="font-size: 0.75rem; margin-top: 2px;">(Solo Plan Premium)</div>
+            </button>
         </div>
     `;
 }
