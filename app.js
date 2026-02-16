@@ -1,7 +1,7 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJg1S4YzIN_0y5t776Tk5aiGNY5enwQQLv1ePRvhW42Fu-f8Fvm2WYth3mZ6yXFAh4cg/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLc68gEUBJWKGbDTZEr4_EjDYVQ9SqFxVMUbr27OulL1ZArysyTmNGsPavzF_Qie78SQ/exec';
 
 // Estado global
 let productos = [];
