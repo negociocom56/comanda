@@ -27,16 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function renderPage() {
     const page = location.hash.slice(1) || 'home';
+    // Mostrar título
     const container = document.getElementById('app-container');
-    const btnVolver = document.getElementById('btn-volver');
     const headerTitle = document.getElementById('header-title');
 
-    // Mostrar/ocultar botón volver
-    if (page === 'home') {
-        btnVolver.classList.add('hidden');
-    } else {
-        btnVolver.classList.remove('hidden');
-    }
+    // El botón home siempre es visible ahora
 
     // Renderizar página correspondiente
     switch (page) {
@@ -591,7 +586,7 @@ async function confirmarCierreCaja() {
         hideLoading();
 
         if (response.success) {
-            showToast('✅ Caja cerrada exitosamente');
+            alert(`✅ Caja cerrada exitosamente\n\nTotal: $${formatCurrency(response.totalGeneral)}\nPedidos: ${response.cantidadPedidos}`);
             location.hash = 'historial-cajas';
         } else {
             showToast('Error al cerrar caja');
