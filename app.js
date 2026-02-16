@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderPage() {
     const page = location.hash.slice(1) || 'home';
     const container = document.getElementById('app-container');
+    const headerTitle = document.getElementById('header-title');
     const btnBack = document.getElementById('btn-back');
     const btnLogout = document.getElementById('btn-logout');
 
