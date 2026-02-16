@@ -1,7 +1,7 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLc68gEUBJWKGbDTZEr4_EjDYVQ9SqFxVMUbr27OulL1ZArysyTmNGsPavzF_Qie78SQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwpV9_PDSsNiSER_uDdh8AKhMp74SPJCryGTV_J4Bdiby_5UZHT4_DyqU03dTsQE_UPw/exec';
 
 // Estado global
 let productos = [];
@@ -17,23 +17,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
-// ROUTER
+// ROUTER & AUTH
 // ============================================
 function renderPage() {
     const page = location.hash.slice(1) || 'home';
     const container = document.getElementById('app-container');
-    const headerTitle = document.getElementById('header-title');
     const btnBack = document.getElementById('btn-back');
+    const btnLogout = document.getElementById('btn-logout');
+
+    // (V9) Login Check
+    // Si no está autenticado, forzar login
+    if (!isAuthenticated() && page !== 'login') {
+        location.hash = 'login';
+        return;
+    }
+
+    // Si está en login pero ya autenticado, ir a home
+    if (isAuthenticated() && page === 'login') {
+        location.hash = 'home';
+        return;
+    }
 
     // Mostrar/ocultar botón de atrás
-    if (page === 'home') {
+    if (page === 'home' || page === 'login') {
         btnBack.classList.add('hidden');
     } else {
         btnBack.classList.remove('hidden');
     }
 
+    // Mostrar/ocultar botón de logout
+    if (page === 'login') {
+        btnLogout.classList.add('hidden');
+    } else {
+        btnLogout.classList.remove('hidden');
+    }
+
     // Renderizar página correspondiente
     switch (page) {
+        case 'login':
+            headerTitle.textContent = 'Acceso Restringido 🔒';
+            renderLogin(container);
+            break;
         case 'home':
             headerTitle.textContent = 'Comanda Electrónica 🖥️';
             renderHome(container);
@@ -61,6 +85,75 @@ function renderPage() {
         default:
             renderHome(container);
     }
+}
+
+function volverAtras() {
+    window.history.back();
+}
+
+// ============================================
+// AUTHENTICATION LOGIC
+// ============================================
+const CRED_USER = 'b3BlcmFkb3I='; // operador (Base64)
+const CRED_PASS = 'Y29tMDI2';     // com026 (Base64)
+
+function isAuthenticated() {
+    return localStorage.getItem('comanda_auth') === 'true';
+}
+
+function login() {
+    const userInput = document.getElementById('login-user').value;
+    const passInput = document.getElementById('login-pass').value;
+
+    // Simple ofuscación para comparar
+    // btoa() crea Base64 desde string
+    if (btoa(userInput) === CRED_USER && btoa(passInput) === CRED_PASS) {
+        localStorage.setItem('comanda_auth', 'true');
+        location.hash = 'home';
+    } else {
+        showToast('Credenciales incorrectas');
+    }
+}
+
+function logout() {
+    localStorage.removeItem('comanda_auth');
+    location.hash = 'login';
+}
+
+// ============================================
+// PANTALLA: LOGIN
+// ============================================
+function renderLogin(container) {
+    container.innerHTML = `
+        <div class="card" style="max-width: 400px; margin: 2rem auto; text-align: center; padding: 2rem;">
+            <div style="width: 80px; height: 80px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                <i class="fas fa-user-lock" style="font-size: 2.5rem; color: var(--primary-600);"></i>
+            </div>
+            <h2 style="margin-bottom: 0.5rem;">Iniciar Sesión</h2>
+            <p class="text-muted" style="margin-bottom: 2rem;">Sistema de Comanda</p>
+            
+            <div class="form-group" style="text-align: left;">
+                <label class="form-label">Usuario</label>
+                <input type="text" id="login-user" class="form-input" placeholder="Ingresá usuario">
+            </div>
+            
+            <div class="form-group" style="text-align: left;">
+                <label class="form-label">Contraseña</label>
+                <input type="password" id="login-pass" class="form-input" placeholder="Ingresá contraseña">
+            </div>
+            
+            <button class="btn btn-primary" onclick="login()" style="width: 100%; margin-top: 1rem;">
+                Ingresar <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    `;
+
+    // Permitir Enter para login
+    document.getElementById('login-pass').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            login();
+        }
+    });
 }
 
 function volverAtras() {
