@@ -1,7 +1,7 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwpV9_PDSsNiSER_uDdh8AKhMp74SPJCryGTV_J4Bdiby_5UZHT4_DyqU03dTsQE_UPw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7wW5GkeimTH0RSTxjL8ckv65whDLfasxW_1cebG9o4Yfj3Bjd8tONoBYGNvTMNeLBtg/exec';
 
 // Estado global
 let productos = [];
@@ -312,6 +312,14 @@ async function renderNuevoPedido(container) {
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label"><i class="fas fa-truck"></i> Tipo de Entrega</label>
+                    <select id="tipoEntrega" class="form-select" onchange="toggleDomicilio()">
+                        <option value="retira">🏠 Retira en el local</option>
+                        <option value="envio">🚚 Requiere envío</option>
+                    </select>
+                </div>
+                
+                <div class="form-group hidden" id="domicilio-group">
                     <label class="form-label"><i class="fas fa-map-marker-alt"></i> Domicilio de Entrega</label>
                     <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
                 </div>
@@ -324,8 +332,9 @@ async function renderNuevoPedido(container) {
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-credit-card"></i> Método de Pago</label>
                     <select id="metodoPago" class="form-select">
-                        <option value="mercadopago"><i class="fas fa-qrcode"></i> Mercado Pago</option>
-                        <option value="efectivo"><i class="fas fa-money-bill-wave"></i> Efectivo</option>
+                        <option value="mercadopago"><i class="fas fa-qrcode"></i>📠 Mercado Pago</option>
+                        <option value="efectivo"><i class="fas fa-money-bill-wave"></i>💵 Efectivo</option>
+                        <option value="point">💳 POINT (Posnet)</option>
                     </select>
                 </div>
                 
@@ -391,6 +400,7 @@ async function confirmarPedido() {
     const domicilio = document.getElementById('domicilioCliente').value.trim();
     const observaciones = document.getElementById('observaciones').value;
     const metodoPago = document.getElementById('metodoPago').value;
+    const tipoEntrega = document.getElementById('tipoEntrega').value;
     const total = calcularTotal();
 
     if (pedidoActual.length === 0) {
@@ -400,6 +410,11 @@ async function confirmarPedido() {
 
     if (nombre.length < 3) {
         showToast('El nombre debe tener al menos 3 caracteres');
+        return;
+    }
+
+    if (tipoEntrega === 'envio' && !domicilio) {
+        showToast('Debés ingresar el domicilio de entrega');
         return;
     }
 
@@ -419,7 +434,8 @@ async function confirmarPedido() {
             observaciones: observaciones,
             nombre: nombre,
             domicilio: domicilio,
-            celular: celular
+            celular: celular,
+            tipoEntrega: tipoEntrega
         });
 
         hideLoading();
@@ -438,6 +454,18 @@ async function confirmarPedido() {
     } catch (error) {
         hideLoading();
         showToast('Error de conexión: ' + error.message);
+    }
+}
+
+function toggleDomicilio() {
+    const tipo = document.getElementById('tipoEntrega').value;
+    const domicilioGroup = document.getElementById('domicilio-group');
+
+    if (tipo === 'envio') {
+        domicilioGroup.classList.remove('hidden');
+    } else {
+        domicilioGroup.classList.add('hidden');
+        document.getElementById('domicilioCliente').value = '';
     }
 }
 
@@ -506,8 +534,13 @@ async function renderPedidos(container) {
     const fecha = getFechaHoy();
 
     try {
-        const response = await apiGet('pedidos', { fecha });
-        pedidosDelDia = response.pedidos || [];
+        const [pedidosResponse, cadetesResponse] = await Promise.all([
+            apiGet('pedidos', { fecha }),
+            apiGet('cadetes')
+        ]);
+
+        pedidosDelDia = pedidosResponse.pedidos || [];
+        window.cadetes = cadetesResponse.cadetes || [];
 
         hideLoading();
 
@@ -531,27 +564,29 @@ async function renderPedidos(container) {
 
         pedidosDelDia.forEach(pedido => {
             const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
-            const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
+            const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
+            const entregaBadge = `<span class="badge badge-${pedido.tipoEntrega === 'retira' ? 'blue' : 'orange'}" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
 
             html += `
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">
-                                <i class="fas fa-receipt" style="color: var(--primary-600);"></i>
-                                ${pedido.id}
-                                <span style="font-size: 0.9em; font-weight: normal; color: var(--gray-500);">
-                                    - ${pedido.nombre || 'Cliente'}
-                                </span>
-                            </div>
-                            <div class="card-subtitle"><i class="far fa-clock"></i> ${formatDateTime(pedido.fecha)}</div>
-                            ${pedido.domicilio ? `<div style="font-size: 0.875em; margin-top: 0.5rem; color: var(--gray-600);"><i class="fas fa-map-marker-alt"></i> ${pedido.domicilio}</div>` : ''}
-                            ${pedido.celular ? `<div style="font-size: 0.875em; margin-top: 0.25rem; color: var(--gray-600);"><i class="fas fa-phone"></i> ${pedido.celular}</div>` : ''}
+                        <div class="card-title">
+                            <i class="fas fa-receipt" style="color: var(--primary-600);"></i>
+                            ${pedido.id}
+                            <span style="font-size: 0.9em; font-weight: normal; color: var(--gray-500);">
+                                - ${pedido.nombre || 'Cliente'}
+                            </span>
                         </div>
-                        <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
-                            ${estadoBadge}
-                            ${metodoBadge}
-                        </div>
+                        <div class="card-subtitle"><i class="far fa-clock"></i> ${formatDateTime(pedido.fecha)}</div>
+                        ${pedido.domicilio ? `<div style="font-size: 0.875em; margin-top: 0.5rem; color: var(--gray-600);"><i class="fas fa-map-marker-alt"></i> ${pedido.domicilio}</div>` : ''}
+                        ${pedido.celular ? `<div style="font-size: 0.875em; margin-top: 0.25rem; color: var(--gray-600);"><i class="fas fa-phone"></i> ${pedido.celular}</div>` : ''}
+                    </div>
+                    <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                        ${estadoBadge}
+                        ${metodoBadge}
+                        ${entregaBadge}
+                    </div>
                     </div>
                     <div class="card-body">
                         <strong style="color: var(--gray-700);"><i class="fas fa-list"></i> Items:</strong>
@@ -560,14 +595,35 @@ async function renderPedidos(container) {
                                 <li style="margin-bottom: 0.375rem;">${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}</li>
                             `).join('')}
                         </ul>
-                        ${pedido.observaciones ? `<p style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-comment"></i> Obs:</strong> ${pedido.observaciones}</p>` : ''}
-                        <p style="font-size: 1.375rem; font-weight: 800; color: var(--primary-600); margin-top: 1rem; letter-spacing: -0.025em;">
-                            <i class="fas fa-dollar-sign"></i> ${formatCurrency(pedido.total)}
-                        </p>
-                    </div>
-                    <div class="card-footer">
-                        ${renderBotonesEstado(pedido)}
-                    </div>
+                        ${pedido.observaciones ? `<p style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-comment-alt"></i> Observaciones:</strong> ${pedido.observaciones}</p>` : ''}
+                    ${pedido.tipoEntrega === 'envio' && pedido.cadete ? `<p style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-user-tag"></i> Cadete:</strong> ${window.cadetes.find(c => c.id === pedido.cadete)?.nombre || pedido.cadete}</p>` : ''}
+                </div>
+                <div class="card-footer">
+                    ${renderBotonesEstado(pedido)}
+                    ${pedido.tipoEntrega === 'envio' && (pedido.estado === 'pagado' || (pedido.estado === 'pendiente' && pedido.metodoPago === 'efectivo')) ? `
+                        <div style="display: inline-block; position: relative; margin-left: 10px;">
+                            <i class="fas fa-motorcycle" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--primary-600); pointer-events: none; z-index: 1;"></i>
+                            <select class="form-select" style="
+                                display: inline-block; 
+                                width: auto; 
+                                min-width: 180px;
+                                padding-left: 38px;
+                                background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+                                border: 2px solid var(--primary-200);
+                                color: var(--primary-700);
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                            " onchange="asignarCadete('${pedido.id}', this.value)" onmouseover="this.style.borderColor='var(--primary-400)'; this.style.background='linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%)'" onmouseout="this.style.borderColor='var(--primary-200)'; this.style.background='linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%)'">
+                                <option value="">${pedido.cadete ? '🔄 Cambiar cadete' : '👤 Asignar cadete'}</option>
+                                ${window.cadetes.map(c => `<option value="${c.id}" ${pedido.cadete === c.id ? 'selected' : ''}>${c.nombre}</option>`).join('')}
+                            </select>
+                        </div>
+                    ` : ''}
+                    <button class="btn btn-small btn-secondary" onclick='imprimirPedido(${JSON.stringify(pedido)})'>
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
                 </div>
             `;
         });
@@ -634,6 +690,154 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
     }
 }
 
+async function asignarCadete(pedidoId, cadeteId) {
+    if (!cadeteId) return;
+
+    showLoading();
+    try {
+        const response = await apiPost({
+            action: 'asignar_cadete',
+            pedidoId: pedidoId,
+            cadeteId: cadeteId
+        });
+
+        hideLoading();
+
+        if (response.success) {
+            showToast('✅ Cadete asignado correctamente');
+            const container = document.getElementById('app-container');
+            renderPedidos(container);
+        } else {
+            showToast('Error al asignar cadete');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error: ' + error.message);
+    }
+}
+
+
+function imprimirPedido(pedido) {
+    const ventanaImpresion = window.open('', '_blank', 'width=300,height=600');
+
+    const itemsHTML = pedido.items.map(item => `
+        <tr>
+            <td>${item.cantidad}x</td>
+            <td>${item.producto}</td>
+            <td style="text-align: right;">$${formatCurrency(item.cantidad * item.precio)}</td>
+        </tr>
+    `).join('');
+
+    const metodoPagoTexto = pedido.metodoPago === 'mercadopago' ? 'Mercado Pago' :
+        pedido.metodoPago === 'point' ? 'POINT (Posnet)' : 'Efectivo';
+
+    ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Pedido ${pedido.id}</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Courier New', monospace;
+                    padding: 10px;
+                    font-size: 12px;
+                    max-width: 280px;
+                }
+                .header {
+                    text-align: center;
+                    border-bottom: 2px dashed #000;
+                    padding-bottom: 10px;
+                    margin-bottom: 10px;
+                }
+                .header h1 { font-size: 18px; margin-bottom: 5px; }
+                .header p { font-size: 10px; }
+                .section { margin-bottom: 15px; }
+                .section-title {
+                    font-weight: bold;
+                    border-bottom: 1px solid #000;
+                    margin-bottom: 5px;
+                    padding-bottom: 3px;
+                }
+                table { width: 100%; margin-bottom: 10px; }
+                td { padding: 2px 0; }
+                .total {
+                    border-top: 2px solid #000;
+                    padding-top: 8px;
+                    margin-top: 8px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-align: right;
+                }
+                .footer {
+                    border-top: 2px dashed #000;
+                    padding-top: 10px;
+                    margin-top: 15px;
+                    text-align: center;
+                    font-size: 10px;
+                }
+                @media print {
+                    body { padding: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>COMANDA DIGITAL</h1>
+                <p>Sistema de Pedidos</p>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">PEDIDO: ${pedido.id}</div>
+                <p>Fecha: ${formatDateTime(pedido.fecha)}</p>
+                <p>Estado: ${pedido.estado.toUpperCase()}</p>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">CLIENTE</div>
+                <p><strong>${pedido.nombre || 'Sin nombre'}</strong></p>
+                ${pedido.celular ? `<p>Tel: ${pedido.celular}</p>` : ''}
+                ${pedido.domicilio ? `<p>Dir: ${pedido.domicilio}</p>` : ''}
+            </div>
+            
+            <div class="section">
+                <div class="section-title">ITEMS</div>
+                <table>
+                    ${itemsHTML}
+                </table>
+            </div>
+            
+            ${pedido.observaciones ? `
+            <div class="section">
+                <div class="section-title">OBSERVACIONES</div>
+                <p>${pedido.observaciones}</p>
+            </div>
+            ` : ''}
+            
+            <div class="section">
+                <div class="section-title">PAGO</div>
+                <p>Método: ${metodoPagoTexto}</p>
+                <div class="total">TOTAL: $${formatCurrency(pedido.total)}</div>
+            </div>
+            
+            <div class="footer">
+                <p>¡Gracias por su compra!</p>
+                <p>www.synergydev.com.ar</p>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                }
+            </script>
+        </body>
+        </html>
+    `);
+
+    ventanaImpresion.document.close();
+}
+
 // ============================================
 // PANTALLA: CERRAR CAJA
 // ============================================
@@ -649,6 +853,7 @@ async function renderCerrarCaja(container) {
 
         let totalMP = 0;
         let totalEfectivo = 0;
+        let totalPoint = 0;
         let cantidadPedidos = 0;
 
         pedidos.forEach(pedido => {
@@ -658,11 +863,16 @@ async function renderCerrarCaja(container) {
                     totalMP += pedido.total;
                 } else if (pedido.metodoPago === 'efectivo') {
                     totalEfectivo += pedido.total;
+                } else if (pedido.metodoPago === 'point') {
+                    totalPoint += pedido.total;
                 }
             }
         });
 
-        const totalGeneral = totalMP + totalEfectivo;
+        const totalGeneral = totalMP + totalEfectivo + totalPoint;
+
+        // Guardar en variable global para calcularDiferencia
+        window.totalGeneralCaja = totalGeneral;
 
         container.innerHTML = `
             <div class="card">
@@ -678,12 +888,16 @@ async function renderCerrarCaja(container) {
                             <th style="text-align: right;"><i class="fas fa-dollar-sign"></i> Monto</th>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-qrcode" style="color: var(--secondary-600);"></i> Mercado Pago</td>
+                            <td><i class="fas fa-qrcode" style="color: var(--secondary-600);"></i>📠 Mercado Pago</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalMP)}</strong></td>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-money-bill-wave" style="color: var(--primary-600);"></i> Efectivo</td>
+                            <td><i class="fas fa-money-bill-wave" style="color: var(--primary-600);"></i>💵 Efectivo</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalEfectivo)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>💳 POINT (Posnet)</td>
+                            <td style="text-align: right;"><strong>$${formatCurrency(totalPoint)}</strong></td>
                         </tr>
                         <tr style="background: var(--primary-50);">
                             <td><strong><i class="fas fa-coins"></i> TOTAL</strong></td>
@@ -694,6 +908,26 @@ async function renderCerrarCaja(container) {
                             <td style="text-align: right;"><strong>${cantidadPedidos}</strong></td>
                         </tr>
                     </table>
+                </div>
+            </div>
+            
+            <div class="card" style="border-left: 4px solid var(--warning-500);">
+                <h3 style="margin-bottom: 1rem;">
+                    <i class="fas fa-cash-register"></i> Dinero Real en Caja
+                </h3>
+                <div class="form-group">
+                    <label class="form-label">💵 Dinero Real Contado ($)</label>
+                    <input type="number" id="dineroReal" class="form-input" placeholder="Ingresá el dinero real en caja" min="0" step="0.01" oninput="calcularDiferencia()">
+                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">
+                        Ingresá el monto total que contaste físicamente en la caja
+                    </small>
+                </div>
+                
+                <div id="diferencia-container" class="hidden" style="padding: 1rem; border-radius: var(--radius-md); margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">Diferencia:</span>
+                        <span id="diferencia-monto" style="font-size: 1.25rem; font-weight: 800;"></span>
+                    </div>
                 </div>
             </div>
             
@@ -714,17 +948,77 @@ async function renderCerrarCaja(container) {
     }
 }
 
+function calcularDiferencia() {
+    const dineroReal = parseFloat(document.getElementById('dineroReal').value) || 0;
+    const diferencia = dineroReal - window.totalGeneralCaja;
+    const container = document.getElementById('diferencia-container');
+    const montoSpan = document.getElementById('diferencia-monto');
+
+    if (dineroReal > 0) {
+        container.classList.remove('hidden');
+        montoSpan.textContent = `$${formatCurrency(Math.abs(diferencia))}`;
+
+        if (diferencia === 0) {
+            container.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
+            container.style.color = '#065f46';
+            montoSpan.style.color = '#065f46';
+        } else if (diferencia > 0) {
+            container.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
+            container.style.color = '#92400e';
+            montoSpan.style.color = '#92400e';
+            montoSpan.textContent = `+$${formatCurrency(diferencia)} (Sobrante)`;
+        } else {
+            container.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
+            container.style.color = '#991b1b';
+            montoSpan.style.color = '#991b1b';
+            montoSpan.textContent = `-$${formatCurrency(Math.abs(diferencia))} (Faltante)`;
+        }
+    } else {
+        container.classList.add('hidden');
+    }
+}
+
 async function confirmarCierreCaja() {
-    if (!confirm('¿Confirmar cierre de caja del día?')) return;
+    const dineroReal = parseFloat(document.getElementById('dineroReal').value) || 0;
+
+    if (dineroReal === 0) {
+        showToast('Por favor ingresá el dinero real en caja');
+        return;
+    }
+
+    const diferencia = dineroReal - window.totalGeneralCaja;
+    let mensaje = '¿Confirmar cierre de caja del día?';
+
+    if (diferencia !== 0) {
+        if (diferencia > 0) {
+            mensaje += `\n\n⚠️ SOBRANTE: $${formatCurrency(diferencia)}`;
+        } else {
+            mensaje += `\n\n⚠️ FALTANTE: $${formatCurrency(Math.abs(diferencia))}`;
+        }
+    } else {
+        mensaje += '\n\n✅ Caja cuadrada (sin diferencias)';
+    }
+
+    if (!confirm(mensaje)) return;
+
     showLoading();
 
     try {
-        const response = await apiPost({ action: 'cerrar_caja' });
+        const response = await apiPost({
+            action: 'cerrar_caja',
+            dineroReal: dineroReal
+        });
 
         hideLoading();
 
         if (response.success) {
-            alert(`✅ Caja cerrada exitosamente\n\nTotal: $${formatCurrency(response.totalGeneral)}\nPedidos: ${response.cantidadPedidos}`);
+            let alertMsg = `✅ Caja cerrada exitosamente\n\nTotal Sistema: $${formatCurrency(response.totalGeneral)}\nDinero Real: $${formatCurrency(dineroReal)}\nPedidos: ${response.cantidadPedidos}`;
+
+            if (diferencia !== 0) {
+                alertMsg += `\n\nDiferencia: $${formatCurrency(Math.abs(diferencia))} ${diferencia > 0 ? '(Sobrante)' : '(Faltante)'}`;
+            }
+
+            alert(alertMsg);
             location.hash = 'historial-cajas';
         } else {
             showToast('Error al cerrar caja');
@@ -764,18 +1058,39 @@ async function renderHistorialCajas(container) {
                 <th><i class="far fa-calendar"></i> Fecha</th>
                 <th><i class="fas fa-qrcode"></i> MP</th>
                 <th><i class="fas fa-money-bill"></i> Efectivo</th>
+                <th>💳 POINT</th>
                 <th><i class="fas fa-coins"></i> Total</th>
+                <th>💵 Real</th>
+                <th>📊 Dif.</th>
                 <th><i class="fas fa-shopping-bag"></i> Pedidos</th>
             </tr>
         `;
 
         cajas.forEach(caja => {
+            const diferencia = (caja.diferencia || 0);
+            let diferenciaStyle = '';
+            let diferenciaText = '$' + formatCurrency(Math.abs(diferencia));
+
+            if (diferencia === 0) {
+                diferenciaStyle = 'color: #065f46; font-weight: 700;';
+                diferenciaText = '✓';
+            } else if (diferencia > 0) {
+                diferenciaStyle = 'color: #92400e; font-weight: 700;';
+                diferenciaText = '+$' + formatCurrency(diferencia);
+            } else {
+                diferenciaStyle = 'color: #991b1b; font-weight: 700;';
+                diferenciaText = '-$' + formatCurrency(Math.abs(diferencia));
+            }
+
             html += `
                 <tr>
                     <td>${formatDate(new Date(caja.fecha))}</td>
-                    <td>$${formatCurrency(caja.totalMercadoPago)}</td>
-                    <td>$${formatCurrency(caja.totalEfectivo)}</td>
+                    <td>$${formatCurrency(caja.totalMercadoPago || 0)}</td>
+                    <td>$${formatCurrency(caja.totalEfectivo || 0)}</td>
+                    <td>$${formatCurrency(caja.totalPoint || 0)}</td>
                     <td><strong style="color: var(--primary-600);">$${formatCurrency(caja.totalGeneral)}</strong></td>
+                    <td>$${formatCurrency(caja.dineroReal || 0)}</td>
+                    <td style="${diferenciaStyle}">${diferenciaText}</td>
                     <td>${caja.cantidadPedidos}</td>
                 </tr>
             `;

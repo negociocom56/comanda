@@ -474,6 +474,13 @@ header h1 {
     box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
 }
 
+.badge-point {
+    background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+    color: #6b21a8;
+    box-shadow: 0 2px 4px rgba(168, 85, 247, 0.2);
+}
+
+
 /* ============================================
    FORMULARIOS
    ============================================ */
