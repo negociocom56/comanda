@@ -299,7 +299,7 @@ async function renderNuevoPedido(container) {
         prods.forEach(producto => {
             const cantidad = getCantidadEnPedido(producto.id);
             html += `
-                <div class="producto-item" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                <div class="producto-item" id="item-${producto.id}" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <div class="producto-info">
                             <div class="producto-nombre">${producto.nombre}</div>
@@ -311,118 +311,119 @@ async function renderNuevoPedido(container) {
                                 <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">
                                     <i class="fas fa-minus"></i>
                                 </button>
-                                <span class="cantidad-display">${cantidad}</span>
+                                <span class="cantidad-display" id="qty-${producto.id}">${cantidad}</span>
                                 <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', 1)">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    ${cantidad > 0 ? `
-                        <div class="producto-nota" style="margin-top: 2px;">
-                            <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
-                                placeholder="📝 Agregar nota específica..." 
-                                value="${pedidoActual.find(i => i.id === producto.id)?.nota || ''}"
-                                onchange="actualizarNota('${producto.id}', this.value)">
-                        </div>
-                    ` : ''}
+                    <div id="nota-container-${producto.id}">
+                        ${cantidad > 0 ? `
+                            <div class="producto-nota" style="margin-top: 2px;">
+                                <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
+                                    placeholder="📝 Agregar nota específica..." 
+                                    value="${pedidoActual.find(i => i.id === producto.id)?.nota || ''}"
+                                    onchange="actualizarNota('${producto.id}', this.value)">
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             `;
         });
     }
 
     html += '</div>';
+    html += '<div id="seccion-resumen-pedido">';
 
     const total = calcularTotal();
     const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
 
     if (itemsCount > 0) {
-        html += `
-            <div class="resumen-pedido">
-                <h3><i class="fas fa-shopping-cart"></i> Resumen del Pedido</h3>
-                <div class="resumen-items">
-                    ${pedidoActual.map(item => `
-                        <div class="resumen-item" style="flex-direction: column; align-items: flex-start;">
-                            <div style="display: flex; justify-content: space-between; width: 100%;">
-                                <span>${item.cantidad}x ${item.producto}</span>
-                                <span>$${formatCurrency(item.cantidad * item.precio)}</span>
-                            </div>
-                            ${item.nota ? `<small class="text-muted" style="font-style: italic; color: var(--primary-600);">Nota: ${item.nota}</small>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="resumen-total">
-                    <span>TOTAL</span>
-                    <span>$${formatCurrency(total)}</span>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h3 style="margin-bottom: 1.25rem; font-size: 1.125rem;">
-                    <i class="fas fa-user"></i> Datos del Cliente
-                </h3>
-                
-                <div class="form-group">
-                    <label class="form-label">Nombre del Cliente <span style="color: var(--danger-500);">*</span></label>
-                    <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
-                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Mínimo 3 caracteres</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-mobile-alt"></i> Celular (WhatsApp)</label>
-                    <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
-                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Solo números, sin guiones ni espacios (opcional)</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-truck"></i> Tipo de Entrega</label>
-                    <select id="tipoEntrega" class="form-select" onchange="toggleDomicilio()">
-                        <option value="retira">🏠 Retira en el local</option>
-                        <option value="envio">🚚 Requiere envío</option>
-                    </select>
-                </div>
-                
-                <div class="form-group hidden" id="domicilio-group">
-                    <label class="form-label"><i class="fas fa-map-marker-alt"></i> Domicilio de Entrega</label>
-                    <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-comment-alt"></i> Observaciones</label>
-                    <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-credit-card"></i> Método de Pago</label>
-                    <select id="metodoPago" class="form-select">
-                        <option value="mercadopago"><i class="fas fa-qrcode"></i>📠 Mercado Pago</option>
-                        <option value="efectivo"><i class="fas fa-money-bill-wave"></i>💵 Efectivo</option>
-                        <option value="point">💳 POINT (Posnet)</option>
-                    </select>
-                </div>
-                
-                <button class="btn btn-primary" onclick="confirmarPedido()" style="margin-top: 1.5rem;">
-                    <i class="fas fa-check-circle"></i>
-                    Confirmar Pedido
-                </button>
-                <button class="btn btn-danger" onclick="cancelarPedido()">
-                    <i class="fas fa-times-circle"></i>
-                    Cancelar
-                </button>
-            </div>
-        `;
-    } else {
-        html += `
-            <div class="card text-center" style="padding: 3rem 2rem;">
-                <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                    <i class="fas fa-shopping-basket" style="font-size: 2.5rem; color: var(--gray-400);"></i>
-                </div>
-                <p class="text-muted" style="font-size: 1.125rem;">Agregá productos al pedido usando los botones +</p>
-            </div>
-        `;
+        html += renderHTMLResumenPedido();
     }
 
+    html += '</div>';
     container.innerHTML = html;
+}
+
+// Genera solo el HTML del resumen y datos del cliente (V10)
+function renderHTMLResumenPedido() {
+    const total = calcularTotal();
+    return `
+        <div class="resumen-pedido">
+            <h3><i class="fas fa-shopping-cart"></i> Resumen del Pedido</h3>
+            <div class="resumen-items">
+                ${pedidoActual.map(item => `
+                    <div class="resumen-item" style="flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>${item.cantidad}x ${item.producto}</span>
+                            <span>$${formatCurrency(item.cantidad * item.precio)}</span>
+                        </div>
+                        ${item.nota ? `<small class="text-muted" style="font-style: italic; color: var(--primary-600);">Nota: ${item.nota}</small>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+            <div class="resumen-total">
+                <span>TOTAL</span>
+                <span>$${formatCurrency(total)}</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 1.25rem; font-size: 1.125rem;">
+                <i class="fas fa-user"></i> Datos del Cliente
+            </h3>
+            
+            <div class="form-group">
+                <label class="form-label">Nombre del Cliente <span style="color: var(--danger-500);">*</span></label>
+                <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
+                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Mínimo 3 caracteres</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-mobile-alt"></i> Celular (WhatsApp)</label>
+                <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
+                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Solo números, sin guiones ni espacios (opcional)</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-truck"></i> Tipo de Entrega</label>
+                <select id="tipoEntrega" class="form-select" onchange="toggleDomicilio()">
+                    <option value="retira">🏠 Retira en el local</option>
+                    <option value="envio">🚚 Requiere envío</option>
+                </select>
+            </div>
+            
+            <div class="form-group hidden" id="domicilio-group">
+                <label class="form-label"><i class="fas fa-map-marker-alt"></i> Domicilio de Entrega</label>
+                <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-comment-alt"></i> Observaciones</label>
+                <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-credit-card"></i> Método de Pago</label>
+                <select id="metodoPago" class="form-select">
+                    <option value="mercadopago"><i class="fas fa-qrcode"></i>📠 Mercado Pago</option>
+                    <option value="efectivo"><i class="fas fa-money-bill-wave"></i>💵 Efectivo</option>
+                    <option value="point">💳 POINT (Posnet)</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="confirmarPedido()" style="margin-top: 1.5rem;">
+                <i class="fas fa-check-circle"></i>
+                Confirmar Pedido
+            </button>
+            <button class="btn btn-danger" onclick="cancelarPedido()">
+                <i class="fas fa-times-circle"></i>
+                Cancelar
+            </button>
+        </div>
+    `;
 }
 
 function getCantidadEnPedido(productoId) {
@@ -450,19 +451,111 @@ function cambiarCantidad(productoId, delta) {
         });
     }
 
-    renderPage();
+    // (V10) Optimización: Actualización parcial del DOM
+    // En lugar de renderizar toda la página, actualizamos solo lo necesario
+    actualizarUIDespuesDeCambioCantidad(productoId);
 }
 
+function actualizarUIDespuesDeCambioCantidad(productoId) {
+    const cantidad = getCantidadEnPedido(productoId);
+
+    // 1. Actualizar contador en la lista
+    const qtyDisplay = document.getElementById(`qty-${productoId}`);
+    if (qtyDisplay) {
+        qtyDisplay.textContent = cantidad;
+    }
+
+    // 2. Mostrar/Ocultar campo de notas
+    const notaContainer = document.getElementById(`nota-container-${productoId}`);
+    if (notaContainer) {
+        if (cantidad > 0 && !notaContainer.innerHTML.trim()) {
+            notaContainer.innerHTML = `
+                <div class="producto-nota" style="margin-top: 2px;">
+                    <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
+                        placeholder="📝 Agregar nota específica..." 
+                        onchange="actualizarNota('${productoId}', this.value)">
+                </div>
+            `;
+        } else if (cantidad === 0) {
+            notaContainer.innerHTML = '';
+        }
+    }
+
+    // 3. Actualizar resumen inferior
+    const seccionResumen = document.getElementById('seccion-resumen-pedido');
+    if (seccionResumen) {
+        const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
+        if (itemsCount > 0) {
+            // Preservar valores de los inputs si ya existen
+            const nombre = document.getElementById('nombreCliente')?.value;
+            const celular = document.getElementById('celularCliente')?.value;
+            const tipo = document.getElementById('tipoEntrega')?.value;
+            const domi = document.getElementById('domicilioCliente')?.value;
+            const obs = document.getElementById('observaciones')?.value;
+            const pago = document.getElementById('metodoPago')?.value;
+
+            seccionResumen.innerHTML = renderHTMLResumenPedido();
+
+            // Restaurar valores
+            if (nombre) document.getElementById('nombreCliente').value = nombre;
+            if (celular) document.getElementById('celularCliente').value = celular;
+            if (tipo) {
+                document.getElementById('tipoEntrega').value = tipo;
+                if (tipo === 'envio') document.getElementById('domicilio-group').classList.remove('hidden');
+            }
+            if (domi) document.getElementById('domicilioCliente').value = domi;
+            if (obs) document.getElementById('observaciones').value = obs;
+            if (pago) document.getElementById('metodoPago').value = pago;
+        } else {
+            seccionResumen.innerHTML = `
+                <div class="card text-center" style="padding: 3rem 2rem;">
+                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-shopping-basket" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <p class="text-muted" style="font-size: 1.125rem;">Agregá productos al pedido usando los botones +</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function cargarProductos() {
+    // Intentar cargar desde caché local para acceso inmediato
+    const cached = localStorage.getItem('comanda_productos_cache');
+    if (cached) {
+        productos = JSON.parse(cached);
+        console.log('Productos cargados desde caché local');
+    }
+
+    try {
+        const response = await apiGet('productos');
+        if (response.productos) {
+            productos = response.productos;
+            localStorage.setItem('comanda_productos_cache', JSON.stringify(productos));
+        }
+    } catch (error) {
+        console.error('Error al cargar productos:', error);
+        if (!productos.length) {
+            showToast('Error al cargar productos: ' + error.message);
+        }
+    }
+}
+
+// Debounce para el buscador (V10)
+let debounceTimer;
 function actualizarFiltroBusqueda(val) {
     filtroBusqueda = val;
-    renderNuevoPedido(document.getElementById('app-container'));
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        renderNuevoPedido(document.getElementById('app-container'));
 
-    // Restaurar foco y posición del cursor
-    const input = document.getElementById('busquedaProducto');
-    if (input) {
-        input.focus();
-        input.setSelectionRange(val.length, val.length);
-    }
+        // Restaurar foco después del renderizado demorado
+        const input = document.getElementById('busquedaProducto');
+        if (input) {
+            input.focus();
+            input.setSelectionRange(val.length, val.length);
+        }
+    }, 150); // 150ms es suficiente para ser fluido pero evitar jank extremo
 }
 
 function filtrarCategoria(cat) {
@@ -1412,15 +1505,6 @@ async function apiPost(data) {
     }
 
     return await response.json();
-}
-
-async function cargarProductos() {
-    try {
-        const response = await apiGet('productos');
-        productos = response.productos || [];
-    } catch (error) {
-        showToast('Error al cargar productos: ' + error.message);
-    }
 }
 
 // ============================================
