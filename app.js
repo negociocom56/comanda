@@ -255,11 +255,19 @@ async function renderNuevoPedido(container) {
                 </div>
             </div>
             
-            <div class="categorias-scroll" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: none;">
-                <button class="btn-filtro ${filtroCategoria === 'Todas' ? 'active' : ''}" onclick="filtrarCategoria('Todas')">Todas</button>
-                ${allCategories.map(cat => `
-                    <button class="btn-filtro ${filtroCategoria === cat ? 'active' : ''}" onclick="filtrarCategoria('${cat}')">${cat}</button>
-                `).join('')}
+            <div class="categorias-wrapper" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="scroll-btn" onclick="document.getElementById('categoriasScroll').scrollBy({left: -100, behavior: 'smooth'})">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="categorias-scroll" id="categoriasScroll" style="flex: 1;">
+                    <button class="btn-filtro ${filtroCategoria === 'Todas' ? 'active' : ''}" onclick="filtrarCategoria('Todas')">Todas</button>
+                    ${allCategories.map(cat => `
+                        <button class="btn-filtro ${filtroCategoria === cat ? 'active' : ''}" onclick="filtrarCategoria('${cat}')">${cat}</button>
+                    `).join('')}
+                </div>
+                <button class="scroll-btn" onclick="document.getElementById('categoriasScroll').scrollBy({left: 100, behavior: 'smooth'})">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
         <div class="mb-2">
