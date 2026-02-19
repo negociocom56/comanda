@@ -942,7 +942,7 @@ async function renderCerrarCaja(container) {
     const fecha = getFechaHoy();
 
     try {
-        const response = await apiGet('pedidos', { fecha });
+        const response = await apiGet('pedidos', { fecha, paraCierre: true });
         const pedidos = response.pedidos || [];
 
         hideLoading();
