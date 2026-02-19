@@ -737,6 +737,41 @@ tr:hover td {
 }
 
 /* ============================================
+   NUEVAS MEJORAS: BUSCADOR Y FILTROS
+   ============================================ */
+.search-container {
+    background: var(--bg-body);
+    transition: all var(--transition);
+}
+
+.categorias-scroll {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    -ms-overflow-style: none;
+    /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.categorias-scroll::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+.producto-nota input {
+    border: 1px dashed var(--primary-300);
+    border-radius: var(--radius-sm);
+    background: var(--primary-50);
+}
+
+.producto-nota input:focus {
+    border-style: solid;
+    background: white;
+}
+
+/* ============================================
    TOAST (NOTIFICACIONES)
    ============================================ */
 .toast {

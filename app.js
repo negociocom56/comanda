@@ -7,6 +7,9 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7wW5GkeimTH0R
 let productos = [];
 let pedidoActual = [];
 let pedidosDelDia = [];
+let cadetes = [];
+let filtroBusqueda = '';
+let filtroCategoria = 'Todas';
 
 // ============================================
 // INICIALIZACIÓN
@@ -103,21 +106,31 @@ function volverAtras() {
 // ============================================
 const CRED_USER = 'b3BlcmFkb3I='; // operador (Base64)
 const CRED_PASS = 'Y29tMDI2';     // com026 (Base64)
+const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas en ms
 
 function isAuthenticated() {
     const auth = localStorage.getItem('comanda_auth') === 'true';
-    console.log('Auth check:', auth);
-    return auth;
+    const authTime = localStorage.getItem('comanda_auth_time');
+
+    if (!auth || !authTime) return false;
+
+    const now = new Date().getTime();
+    if (now - parseInt(authTime) > SESSION_DURATION) {
+        console.log('Sesión expirada');
+        logout();
+        return false;
+    }
+
+    return true;
 }
 
 function login() {
     const userInput = document.getElementById('login-user').value;
     const passInput = document.getElementById('login-pass').value;
 
-    // Simple ofuscación para comparar
-    // btoa() crea Base64 desde string
     if (btoa(userInput) === CRED_USER && btoa(passInput) === CRED_PASS) {
         localStorage.setItem('comanda_auth', 'true');
+        localStorage.setItem('comanda_auth_time', new Date().getTime().toString());
         location.hash = 'home';
     } else {
         showToast('Credenciales incorrectas');
@@ -126,6 +139,7 @@ function login() {
 
 function logout() {
     localStorage.removeItem('comanda_auth');
+    localStorage.removeItem('comanda_auth_time');
     location.hash = 'login';
 }
 
@@ -230,15 +244,41 @@ async function renderNuevoPedido(container) {
 
     hideLoading();
 
+    const allCategories = [...new Set(productos.map(p => p.categoria))].sort();
+
+    let html = `
+        <div class="search-container mb-2" style="position: sticky; top: 0; background: var(--bg-body); z-index: 100; padding: 1rem 0;">
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-400);"></i>
+                    <input type="text" id="busquedaProducto" class="form-input" placeholder="Buscar producto..." value="${filtroBusqueda}" oninput="actualizarFiltroBusqueda(this.value)" style="padding-left: 38px;">
+                </div>
+            </div>
+            
+            <div class="categorias-scroll" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: none;">
+                <button class="btn ${filtroCategoria === 'Todas' ? 'btn-primary' : 'btn-light'}" onclick="filtrarCategoria('Todas')" style="white-space: nowrap; padding: 0.5rem 1rem;">Todas</button>
+                ${allCategories.map(cat => `
+                    <button class="btn ${filtroCategoria === cat ? 'btn-primary' : 'btn-light'}" onclick="filtrarCategoria('${cat}')" style="white-space: nowrap; padding: 0.5rem 1rem;">${cat}</button>
+                `).join('')}
+            </div>
+        </div>
+        <div class="mb-2">
+    `;
+
+    // Filtrar productos
+    const productosFiltrados = productos.filter(p => {
+        const coincideNombre = p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase());
+        const coincideCat = filtroCategoria === 'Todas' || p.categoria === filtroCategoria;
+        return coincideNombre && coincideCat;
+    });
+
     const categorias = {};
-    productos.forEach(p => {
+    productosFiltrados.forEach(p => {
         if (!categorias[p.categoria]) {
             categorias[p.categoria] = [];
         }
         categorias[p.categoria].push(p);
     });
-
-    let html = '<div class="mb-2">';
 
     for (const [categoria, prods] of Object.entries(categorias)) {
         html += `
@@ -251,21 +291,33 @@ async function renderNuevoPedido(container) {
         prods.forEach(producto => {
             const cantidad = getCantidadEnPedido(producto.id);
             html += `
-                <div class="producto-item">
-                    <div class="producto-info">
-                        <div class="producto-nombre">${producto.nombre}</div>
-                        <div class="producto-categoria">${producto.categoria}</div>
+                <div class="producto-item" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <div class="producto-info">
+                            <div class="producto-nombre">${producto.nombre}</div>
+                            <div class="producto-categoria">${producto.categoria}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="producto-precio">$${formatCurrency(producto.precio)}</div>
+                            <div class="producto-actions">
+                                <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="cantidad-display">${cantidad}</span>
+                                <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', 1)">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="producto-precio">$${formatCurrency(producto.precio)}</div>
-                    <div class="producto-actions">
-                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <span class="cantidad-display">${cantidad}</span>
-                        <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', 1)">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
+                    ${cantidad > 0 ? `
+                        <div class="producto-nota" style="margin-top: 2px;">
+                            <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
+                                placeholder="📝 Agregar nota específica..." 
+                                value="${pedidoActual.find(i => i.id === producto.id)?.nota || ''}"
+                                onchange="actualizarNota('${producto.id}', this.value)">
+                        </div>
+                    ` : ''}
                 </div>
             `;
         });
@@ -282,9 +334,12 @@ async function renderNuevoPedido(container) {
                 <h3><i class="fas fa-shopping-cart"></i> Resumen del Pedido</h3>
                 <div class="resumen-items">
                     ${pedidoActual.map(item => `
-                        <div class="resumen-item">
-                            <span>${item.cantidad}x ${item.producto}</span>
-                            <span>$${formatCurrency(item.cantidad * item.precio)}</span>
+                        <div class="resumen-item" style="flex-direction: column; align-items: flex-start;">
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>${item.cantidad}x ${item.producto}</span>
+                                <span>$${formatCurrency(item.cantidad * item.precio)}</span>
+                            </div>
+                            ${item.nota ? `<small class="text-muted" style="font-style: italic; color: var(--primary-600);">Nota: ${item.nota}</small>` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -388,6 +443,23 @@ function cambiarCantidad(productoId, delta) {
     }
 
     renderPage();
+}
+
+function actualizarFiltroBusqueda(val) {
+    filtroBusqueda = val;
+    renderNuevoPedido(document.getElementById('app-container'));
+}
+
+function filtrarCategoria(cat) {
+    filtroCategoria = cat;
+    renderNuevoPedido(document.getElementById('app-container'));
+}
+
+function actualizarNota(productoId, nota) {
+    const itemIndex = pedidoActual.findIndex(p => p.id === productoId);
+    if (itemIndex >= 0) {
+        pedidoActual[itemIndex].nota = nota;
+    }
 }
 
 function calcularTotal() {
@@ -592,7 +664,10 @@ async function renderPedidos(container) {
                         <strong style="color: var(--gray-700);"><i class="fas fa-list"></i> Items:</strong>
                         <ul style="margin: 0.75rem 0; padding-left: 1.5rem; color: var(--gray-600);">
                             ${pedido.items.map(item => `
-                                <li style="margin-bottom: 0.375rem;">${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}</li>
+                                <li style="margin-bottom: 0.375rem;">
+                                    ${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}
+                                    ${item.nota ? `<br><small style="font-style: italic; color: var(--primary-600); margin-left: 10px;">• ${item.nota}</small>` : ''}
+                                </li>
                             `).join('')}
                         </ul>
                         ${pedido.observaciones ? `<p style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-comment-alt"></i> Observaciones:</strong> ${pedido.observaciones}</p>` : ''}
@@ -726,6 +801,12 @@ function imprimirPedido(pedido) {
             <td>${item.producto}</td>
             <td style="text-align: right;">$${formatCurrency(item.cantidad * item.precio)}</td>
         </tr>
+        ${item.nota ? `
+        <tr>
+            <td></td>
+            <td colspan="2" style="font-size: 10px; font-style: italic; color: #444; padding-left: 5px;">- ${item.nota}</td>
+        </tr>
+        ` : ''}
     `).join('');
 
     const metodoPagoTexto = pedido.metodoPago === 'mercadopago' ? 'Mercado Pago' :
