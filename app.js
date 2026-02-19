@@ -256,9 +256,9 @@ async function renderNuevoPedido(container) {
             </div>
             
             <div class="categorias-scroll" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: none;">
-                <button class="btn ${filtroCategoria === 'Todas' ? 'btn-primary' : 'btn-light'}" onclick="filtrarCategoria('Todas')" style="white-space: nowrap; padding: 0.5rem 1rem;">Todas</button>
+                <button class="btn-filtro ${filtroCategoria === 'Todas' ? 'active' : ''}" onclick="filtrarCategoria('Todas')">Todas</button>
                 ${allCategories.map(cat => `
-                    <button class="btn ${filtroCategoria === cat ? 'btn-primary' : 'btn-light'}" onclick="filtrarCategoria('${cat}')" style="white-space: nowrap; padding: 0.5rem 1rem;">${cat}</button>
+                    <button class="btn-filtro ${filtroCategoria === cat ? 'active' : ''}" onclick="filtrarCategoria('${cat}')">${cat}</button>
                 `).join('')}
             </div>
         </div>
@@ -448,6 +448,13 @@ function cambiarCantidad(productoId, delta) {
 function actualizarFiltroBusqueda(val) {
     filtroBusqueda = val;
     renderNuevoPedido(document.getElementById('app-container'));
+
+    // Restaurar foco y posición del cursor
+    const input = document.getElementById('busquedaProducto');
+    if (input) {
+        input.focus();
+        input.setSelectionRange(val.length, val.length);
+    }
 }
 
 function filtrarCategoria(cat) {

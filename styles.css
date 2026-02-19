@@ -740,15 +740,16 @@ tr:hover td {
    NUEVAS MEJORAS: BUSCADOR Y FILTROS
    ============================================ */
 .search-container {
-    background: var(--bg-body);
+    background: var(--gray-50);
     transition: all var(--transition);
+    border-bottom: 2px solid var(--gray-200);
 }
 
 .categorias-scroll {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    padding: 0.5rem 0.25rem 1rem;
     -ms-overflow-style: none;
     /* IE/Edge */
     scrollbar-width: none;
@@ -758,6 +759,38 @@ tr:hover td {
 .categorias-scroll::-webkit-scrollbar {
     display: none;
     /* Chrome/Safari */
+}
+
+.btn-filtro {
+    white-space: nowrap;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    border: 1px solid var(--gray-200);
+    background: white;
+    color: var(--gray-600);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+}
+
+.btn-filtro:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn-filtro.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+    box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .producto-nota input {
