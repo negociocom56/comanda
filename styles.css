@@ -262,9 +262,9 @@ header h1 {
    ============================================ */
 #app-container {
     width: 100%;
-    max-width: 900px;
+    max-width: 680px;
     margin: 0 auto;
-    padding: 1rem 1rem 5rem;
+    padding: 1.25rem 1.25rem 5rem;
     flex: 1;
     transition: max-width 0.3s ease;
 }
@@ -546,8 +546,12 @@ header h1 {
 
 /* Stagger animation for cards */
 .stagger-item {
-    opacity: 0;
-    transform: translateY(8px);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Solo aplicar animación de entrada si es un renderizado nuevo */
+.stagger-item {
     animation: staggerIn 0.3s ease-out forwards;
     backface-visibility: hidden;
 }

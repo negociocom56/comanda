@@ -1025,7 +1025,7 @@ function renderPedidosList(container, pedidos) {
         { key: 'cancelado', label: 'Cancelados', icon: 'fas fa-times' },
     ];
 
-    let html = `<div class="page-transition">
+    let html = `
         <div style="position: sticky; top: 0; z-index: 50; background: var(--bg-body); padding: 0.75rem 0 0.5rem; margin: -0.25rem 0 0.75rem;">
             <div style="position: relative; margin-bottom: 0.625rem;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
@@ -1136,7 +1136,7 @@ function renderPedidosList(container, pedidos) {
             `;
     });
 
-    html += '</div>';
+    html += '';
     container.innerHTML = html;
 
     // Restaurar foco en el buscador si estaba activo
