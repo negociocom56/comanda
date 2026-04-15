@@ -528,7 +528,7 @@ async function renderNuevoPedido(container) {
                                 <input type="text" class="form-input" style="font-size: 0.8125rem; padding: 0.5rem; background: var(--bg-hover);" 
                                     placeholder="📝 Agregar nota específica..." 
                                     value="${pedidoActual.find(i => i.id === producto.id)?.nota || ''}"
-                                    onchange="actualizarNota('${producto.id}', this.value)">
+                                    oninput="actualizarNota('${producto.id}', this.value)">
                             </div>
                         ` : ''}
                     </div>
@@ -678,7 +678,7 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
                 <div class="producto-nota" style="margin-top: 2px;">
                     <input type="text" class="form-input" style="font-size: 0.8125rem; padding: 0.5rem; background: var(--bg-hover);" 
                         placeholder="📝 Agregar nota específica..." 
-                        onchange="actualizarNota('${productoId}', this.value)">
+                        oninput="actualizarNota('${productoId}', this.value)">
                 </div>
             `;
         } else if (cantidad === 0) {
@@ -772,6 +772,33 @@ function actualizarNota(productoId, nota) {
     const itemIndex = pedidoActual.findIndex(p => p.id === productoId);
     if (itemIndex >= 0) {
         pedidoActual[itemIndex].nota = nota;
+        
+        // Refrescar solo el resumen lateral/inferior sin re-renderizar toda la lista
+        const seccionResumen = document.getElementById('seccion-resumen-pedido');
+        if (seccionResumen && pedidoActual.length > 0) {
+            // Guardamos el estado de los inputs del cliente para no perderlos
+            const values = {
+                nombre: document.getElementById('nombreCliente')?.value,
+                celular: document.getElementById('celularCliente')?.value,
+                tipo: document.getElementById('tipoEntrega')?.value,
+                domi: document.getElementById('domicilioCliente')?.value,
+                obs: document.getElementById('observaciones')?.value,
+                pago: document.getElementById('metodoPago')?.value
+            };
+
+            seccionResumen.innerHTML = renderHTMLResumenPedido();
+
+            // Restauramos los valores
+            if (values.nombre) document.getElementById('nombreCliente').value = values.nombre;
+            if (values.celular) document.getElementById('celularCliente').value = values.celular;
+            if (values.tipo) {
+                document.getElementById('tipoEntrega').value = values.tipo;
+                if (values.tipo === 'envio') document.getElementById('domicilio-group')?.classList.remove('hidden');
+            }
+            if (values.domi) document.getElementById('domicilioCliente').value = values.domi;
+            if (values.obs) document.getElementById('observaciones').value = values.obs;
+            if (values.pago) document.getElementById('metodoPago').value = values.pago;
+        }
     }
 }
 

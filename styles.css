@@ -261,11 +261,18 @@ header h1 {
    CONTENEDOR PRINCIPAL
    ============================================ */
 #app-container {
-    padding: 1.25rem;
-    max-width: 680px;
-    margin: 0 auto;
-    flex: 1;
     width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 1rem 5rem;
+    flex: 1;
+    transition: max-width 0.3s ease;
+}
+
+/* Wider container for table views (e.g. History) */
+#app-container:has(table),
+#app-container:has(.table-responsive) {
+    max-width: 1200px;
 }
 
 /* Page transition wrapper */
@@ -540,8 +547,9 @@ header h1 {
 /* Stagger animation for cards */
 .stagger-item {
     opacity: 0;
-    transform: translateY(16px);
-    animation: staggerIn 0.4s ease-out forwards;
+    transform: translateY(8px);
+    animation: staggerIn 0.3s ease-out forwards;
+    backface-visibility: hidden;
 }
 
 @keyframes staggerIn {
