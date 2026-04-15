@@ -991,8 +991,8 @@ let filtroPedidosEstado = 'todos';
 function renderPedidosList(container, pedidos) {
     // Filtrar pedidos
     const filtrados = pedidos.filter(p => {
-        // Filtro por estado
-        if (filtroPedidosEstado !== 'todos' && p.estado !== filtroPedidosEstado) return false;
+        // Filtro por estado (Case-insensitive)
+        if (filtroPedidosEstado !== 'todos' && p.estado.toLowerCase() !== filtroPedidosEstado.toLowerCase()) return false;
 
         // Filtro por texto
         if (filtroPedidosBusqueda) {
@@ -1010,9 +1010,12 @@ function renderPedidosList(container, pedidos) {
         return true;
     });
 
-    // Contar por estado para los badges
+    // Contar por estado para los badges (Case-insensitive)
     const conteo = { todos: pedidos.length, pendiente: 0, pagado: 0, entregado: 0, cancelado: 0 };
-    pedidos.forEach(p => { if (conteo[p.estado] !== undefined) conteo[p.estado]++; });
+    pedidos.forEach(p => { 
+        const status = (p.estado || '').toLowerCase();
+        if (conteo[status] !== undefined) conteo[status]++; 
+    });
 
     const estados = [
         { key: 'todos', label: 'Todos', icon: 'fas fa-list' },
@@ -1062,7 +1065,7 @@ function renderPedidosList(container, pedidos) {
                 cancelado: '#ef4444',
                 entregado: '#8b5cf6'
             };
-            const borderColor = borderColors[pedido.estado] || 'var(--border-color)';
+            const borderColor = borderColors[pedido.estado.toLowerCase()] || 'var(--border-color)';
 
             html += `
                 <div class="card stagger-item" style="animation-delay: ${index * 50}ms; border-left: 4px solid ${borderColor};">
@@ -1080,7 +1083,7 @@ function renderPedidosList(container, pedidos) {
                         ${pedido.celular ? `<div style="font-size: 0.8125em; margin-top: 0.25rem; color: var(--text-secondary);"><i class="fas fa-phone" style="color: var(--primary-600);"></i> ${pedido.celular}</div>` : ''}
                     </div>
                     <div style="text-align: right; display: flex; flex-direction: column; gap: 0.375rem; align-items: flex-end;">
-                        ${estadoBadge}
+                        <span class="badge badge-${pedido.estado.toLowerCase()}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>
                         ${metodoBadge}
                         ${entregaBadge}
                     </div>
@@ -1160,7 +1163,8 @@ function filtrarPedidosEstado(estado) {
 
 function renderBotonesEstado(pedido) {
     let botones = '';
-    if (pedido.estado === 'pendiente') {
+    const estadoNormalizado = (pedido.estado || '').toLowerCase();
+    if (estadoNormalizado === 'pendiente') {
         botones += `
             <button class="btn btn-small btn-success" onclick="cambiarEstado('${pedido.id}', 'pagado')">
                 <i class="fas fa-check"></i> Pagado
@@ -1177,7 +1181,7 @@ function renderBotonesEstado(pedido) {
                 </button>
             `;
         }
-    } else if (pedido.estado === 'pagado') {
+    } else if (estadoNormalizado === 'pagado') {
         botones += `
             <button class="btn btn-small btn-primary" onclick="cambiarEstado('${pedido.id}', 'entregado')">
                 <i class="fas fa-box"></i> Entregado
@@ -1385,7 +1389,8 @@ async function renderCerrarCaja(container) {
         let cantidadPedidos = 0;
 
         pedidos.forEach(pedido => {
-            if (pedido.estado === 'pagado' || pedido.estado === 'entregado') {
+            const estadoNormalizado = pedido.estado.toLowerCase();
+            if (estadoNormalizado === 'pagado' || estadoNormalizado === 'entregado') {
                 cantidadPedidos++;
                 if (pedido.metodoPago === 'mercadopago') {
                     totalMP += pedido.total;
