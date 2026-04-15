@@ -949,9 +949,81 @@ async function renderPedidos(container) {
             return;
         }
 
-        let html = '<div class="page-transition">';
+        renderPedidosList(container, pedidosDelDia);
 
-        pedidosDelDia.forEach((pedido, index) => {
+    } catch (error) {
+        hideLoading();
+        showToast('Error al cargar pedidos: ' + error.message, 'error');
+    }
+}
+
+// Estado del filtro de pedidos
+let filtroPedidosBusqueda = '';
+let filtroPedidosEstado = 'todos';
+
+function renderPedidosList(container, pedidos) {
+    // Filtrar pedidos
+    const filtrados = pedidos.filter(p => {
+        // Filtro por estado
+        if (filtroPedidosEstado !== 'todos' && p.estado !== filtroPedidosEstado) return false;
+
+        // Filtro por texto
+        if (filtroPedidosBusqueda) {
+            const q = filtroPedidosBusqueda.toLowerCase();
+            const match = (
+                (p.id || '').toLowerCase().includes(q) ||
+                (p.nombre || '').toLowerCase().includes(q) ||
+                (p.celular || '').includes(q) ||
+                (p.domicilio || '').toLowerCase().includes(q) ||
+                (p.observaciones || '').toLowerCase().includes(q) ||
+                (p.estado || '').toLowerCase().includes(q)
+            );
+            if (!match) return false;
+        }
+        return true;
+    });
+
+    // Contar por estado para los badges
+    const conteo = { todos: pedidos.length, pendiente: 0, pagado: 0, entregado: 0, cancelado: 0 };
+    pedidos.forEach(p => { if (conteo[p.estado] !== undefined) conteo[p.estado]++; });
+
+    const estados = [
+        { key: 'todos', label: 'Todos', icon: 'fas fa-list' },
+        { key: 'pendiente', label: 'Pendientes', icon: 'fas fa-clock' },
+        { key: 'pagado', label: 'Pagados', icon: 'fas fa-check' },
+        { key: 'entregado', label: 'Entregados', icon: 'fas fa-box' },
+        { key: 'cancelado', label: 'Cancelados', icon: 'fas fa-times' },
+    ];
+
+    let html = `<div class="page-transition">
+        <div style="position: sticky; top: 0; z-index: 50; background: var(--bg-body); padding: 0.75rem 0 0.5rem; margin: -0.25rem 0 0.75rem;">
+            <div style="position: relative; margin-bottom: 0.625rem;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" class="form-input" id="busquedaPedidos" placeholder="Buscar por ID, cliente, celular..." 
+                    value="${filtroPedidosBusqueda}" 
+                    oninput="filtrarPedidosTexto(this.value)"
+                    style="padding-left: 38px; font-size: 0.875rem;">
+            </div>
+            <div class="categorias-scroll" style="gap: 0.375rem; padding-bottom: 0.25rem;">
+                ${estados.map(e => `
+                    <button class="btn-filtro ${filtroPedidosEstado === e.key ? 'active' : ''}" 
+                            onclick="filtrarPedidosEstado('${e.key}')" 
+                            style="font-size: 0.75rem; padding: 0.375rem 0.75rem; min-width: auto;">
+                        <i class="${e.icon}" style="margin-right: 0.25rem; font-size: 0.625rem;"></i>${e.label} (${conteo[e.key]})
+                    </button>
+                `).join('')}
+            </div>
+        </div>`;
+
+    if (filtrados.length === 0) {
+        html += `
+            <div class="card text-center" style="padding: 2rem;">
+                <i class="fas fa-search" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                <p class="text-muted">No se encontraron pedidos con ese filtro</p>
+            </div>`;
+    }
+
+    filtrados.forEach((pedido, index) => {
             const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
             const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
             const entregaBadge = `<span class="badge" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
@@ -1032,15 +1104,31 @@ async function renderPedidos(container) {
                 </div>
                 </div>
             `;
-        });
+    });
 
-        html += '</div>';
-        container.innerHTML = html;
+    html += '</div>';
+    container.innerHTML = html;
 
-    } catch (error) {
-        hideLoading();
-        showToast('Error al cargar pedidos: ' + error.message, 'error');
+    // Restaurar foco en el buscador si estaba activo
+    const searchInput = document.getElementById('busquedaPedidos');
+    if (searchInput && filtroPedidosBusqueda) {
+        searchInput.focus();
+        searchInput.setSelectionRange(filtroPedidosBusqueda.length, filtroPedidosBusqueda.length);
     }
+}
+
+let debouncePedidos;
+function filtrarPedidosTexto(val) {
+    filtroPedidosBusqueda = val;
+    clearTimeout(debouncePedidos);
+    debouncePedidos = setTimeout(() => {
+        renderPedidosList(document.getElementById('app-container'), pedidosDelDia);
+    }, 150);
+}
+
+function filtrarPedidosEstado(estado) {
+    filtroPedidosEstado = estado;
+    renderPedidosList(document.getElementById('app-container'), pedidosDelDia);
 }
 
 function renderBotonesEstado(pedido) {
