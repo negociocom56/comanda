@@ -3,6 +3,25 @@
 // ============================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7wW5GkeimTH0RSTxjL8ckv65whDLfasxW_1cebG9o4Yfj3Bjd8tONoBYGNvTMNeLBtg/exec';
 
+// ============================================
+// BANNER CONFIGURABLE — Cambiar según cliente
+// ============================================
+const BANNER_CONFIG = {
+    // Tipo: 'gradient', 'image', o 'none'
+    type: 'image',
+    // Si type es 'image', poner la URL aquí:
+    imageUrl: 'https://synergydev.com.ar/Img/bannerej.webp',
+    // Gradiente de fondo (si type es 'gradient'):
+    gradient: 'linear-gradient(135deg, #008C94 0%, #00b4b4 40%, #0ea5e9 100%)',
+    // Overlay oscuro sobre la imagen (si type es 'image'):
+    overlay: 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 100%)',
+    // Texto del banner:
+    title: '¡Bienvenido a Comanda Digital!',
+    subtitle: 'Gestión inteligente de pedidos',
+    // Ícono (Font Awesome class):
+    icon: 'fas fa-store'
+};
+
 // Estado global
 let productos = [];
 let pedidoActual = [];
@@ -10,6 +29,44 @@ let pedidosDelDia = [];
 let cadetes = [];
 let filtroBusqueda = '';
 let filtroCategoria = 'Todas';
+let clockInterval = null;
+
+// ============================================
+// THEME SYSTEM
+// ============================================
+function initTheme() {
+    const saved = localStorage.getItem('comanda_theme');
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    updateThemeIcon();
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('comanda_theme', next);
+    updateThemeIcon();
+
+    // Update meta theme-color
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+        meta.content = next === 'dark' ? '#0c1220' : '#008C94';
+    }
+}
+
+function updateThemeIcon() {
+    const btn = document.getElementById('btn-theme');
+    if (!btn) return;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    btn.innerHTML = isDark
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
+    btn.title = isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+}
 
 // ============================================
 // INICIALIZACIÓN
@@ -17,6 +74,7 @@ let filtroCategoria = 'Todas';
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App inicializando...');
     try {
+        initTheme();
         window.addEventListener('hashchange', renderPage);
         renderPage();
     } catch (error) {
@@ -35,14 +93,18 @@ function renderPage() {
     const btnBack = document.getElementById('btn-back');
     const btnLogout = document.getElementById('btn-logout');
 
+    // Limpiar clock interval si existe
+    if (clockInterval) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    }
+
     // (V9) Login Check
-    // Si no está autenticado, forzar login
     if (!isAuthenticated() && page !== 'login') {
         location.hash = 'login';
         return;
     }
 
-    // Si está en login pero ya autenticado, ir a home
     if (isAuthenticated() && page === 'login') {
         location.hash = 'home';
         return;
@@ -62,14 +124,14 @@ function renderPage() {
         btnLogout.classList.remove('hidden');
     }
 
-    // Renderizar página correspondiente
+    // Renderizar página con transición
     switch (page) {
         case 'login':
             headerTitle.textContent = 'Acceso Restringido 🔒';
             renderLogin(container);
             break;
         case 'home':
-            headerTitle.textContent = 'Comanda Electrónica 🖥️';
+            headerTitle.textContent = 'Comanda Digital';
             renderHome(container);
             break;
         case 'nuevo-pedido':
@@ -131,9 +193,17 @@ function login() {
     if (btoa(userInput) === CRED_USER && btoa(passInput) === CRED_PASS) {
         localStorage.setItem('comanda_auth', 'true');
         localStorage.setItem('comanda_auth_time', new Date().getTime().toString());
+        showToast('✅ Bienvenido al sistema', 'success');
         location.hash = 'home';
     } else {
-        showToast('Credenciales incorrectas');
+        showToast('Credenciales incorrectas', 'error');
+        // Shake animation on login card
+        const card = document.querySelector('.login-card');
+        if (card) {
+            card.style.animation = 'none';
+            card.offsetHeight; // trigger reflow
+            card.style.animation = 'shake 0.4s ease-in-out';
+        }
     }
 }
 
@@ -144,92 +214,225 @@ function logout() {
 }
 
 // ============================================
-// PANTALLA: LOGIN
+// HELPERS: SALUDO Y RELOJ
 // ============================================
-function renderLogin(container) {
-    hideLoading(); // Asegurar que no quede cargando infinito
+function getSaludo() {
+    const hora = new Date().getHours();
+    if (hora >= 6 && hora < 12) return { text: 'Buenos días ☀️', emoji: '☀️' };
+    if (hora >= 12 && hora < 19) return { text: 'Buenas tardes 🌤️', emoji: '🌤️' };
+    return { text: 'Buenas noches 🌙', emoji: '🌙' };
+}
 
-    container.innerHTML = `
-        <div class="card" style="max-width: 400px; margin: 2rem auto; text-align: center; padding: 2rem;">
-            <div style="width: 80px; height: 80px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                <i class="fas fa-user-lock" style="font-size: 2.5rem; color: var(--primary-600);"></i>
-            </div>
-            <h2 style="margin-bottom: 0.5rem;">Iniciar Sesión</h2>
-            <p class="text-muted" style="margin-bottom: 2rem;">Sistema de Comanda</p>
-            
-            <div class="form-group" style="text-align: left;">
-                <label class="form-label">Usuario</label>
-                <input type="text" id="login-user" class="form-input" placeholder="Ingresá usuario">
-            </div>
-            
-            <div class="form-group" style="text-align: left;">
-                <label class="form-label">Contraseña</label>
-                <input type="password" id="login-pass" class="form-input" placeholder="Ingresá contraseña">
-            </div>
-            
-            <button class="btn btn-primary" onclick="login()" style="width: 100%; margin-top: 1rem;">
-                Ingresar <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
-    `;
-
-    // Permitir Enter para login
-    document.getElementById('login-pass').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            login();
-        }
+function getTimeString() {
+    return new Date().toLocaleTimeString('es-AR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
     });
 }
 
-function volverAtras() {
-    window.history.back();
+function getDateString() {
+    return new Date().toLocaleDateString('es-AR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+}
+
+function startClock() {
+    const updateClock = () => {
+        const timeEl = document.getElementById('live-time');
+        const dateEl = document.getElementById('live-date');
+        if (timeEl) timeEl.textContent = getTimeString();
+        if (dateEl) dateEl.textContent = getDateString();
+    };
+    updateClock();
+    clockInterval = setInterval(updateClock, 1000);
 }
 
 // ============================================
-// PANTALLA: HOME
+// PANTALLA: LOGIN
 // ============================================
-function renderHome(container) {
+function renderLogin(container) {
+    hideLoading();
+
     container.innerHTML = `
-        <div class="welcome-card card mb-2" style="background: var(--gradient-primary); color: white; border: none;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-utensils" style="font-size: 1.75rem;"></i>
+        <div class="login-wrapper">
+            <div class="login-card">
+                <div class="login-icon">
+                    <i class="fas fa-lock"></i>
                 </div>
-                <div>
-                    <h2 style="color: white; margin: 0; font-size: 1.5rem;">Bienvenido</h2>
-                    <p style="margin: 0; opacity: 0.9;">Gestión inteligente de pedidos</p>
+                <h2>Iniciar Sesión</h2>
+                <p class="login-subtitle">Acceso al sistema de comanda</p>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label class="form-label"><i class="fas fa-user" style="margin-right: 0.375rem; color: var(--primary-600);"></i>Usuario</label>
+                    <input type="text" id="login-user" class="form-input" placeholder="Ingresá tu usuario" autocomplete="username">
                 </div>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label class="form-label"><i class="fas fa-key" style="margin-right: 0.375rem; color: var(--primary-600);"></i>Contraseña</label>
+                    <input type="password" id="login-pass" class="form-input" placeholder="Ingresá tu contraseña" autocomplete="current-password">
+                </div>
+                
+                <button class="btn btn-primary" onclick="login()" style="margin-top: 0.5rem;">
+                    Ingresar <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
         </div>
-        
-        <div class="btn-grid">
-            <button class="btn btn-primary" onclick="location.hash='nuevo-pedido'">
-                <i class="fas fa-plus-circle"></i>
-                Nuevo Pedido
-            </button>
-            <button class="btn btn-info" onclick="location.hash='pedidos'">
-                <i class="fas fa-clipboard-list"></i>
-                Pedidos del Día
-            </button>
-            <button class="btn btn-warning" onclick="location.hash='cerrar-caja'">
-                <i class="fas fa-cash-register"></i>
-                Cerrar Caja
-            </button>
-            <button class="btn btn-secondary" onclick="location.hash='historial-cajas'">
-                <i class="fas fa-chart-line"></i>
-                Historial de Cajas
-            </button>
-            <button class="btn btn-info" onclick="location.hash='gestionar-productos'" style="background: var(--gradient-dark); border: none;">
-                <i class="fas fa-boxes"></i>
-                Gestionar Productos
-            </button>
-            <button class="btn btn-light" disabled style="opacity: 0.6; cursor: not-allowed;">
-                <i class="fas fa-chart-bar"></i>
-                Métricas
-                <div style="font-size: 0.75rem; margin-top: 2px; opacity: 0.7;">(Solo Plan Premium)</div>
-            </button>
+    `;
+
+    // Shake animation keyframe (injected once)
+    if (!document.getElementById('shake-style')) {
+        const style = document.createElement('style');
+        style.id = 'shake-style';
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                20% { transform: translateX(-8px); }
+                40% { transform: translateX(8px); }
+                60% { transform: translateX(-6px); }
+                80% { transform: translateX(6px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Enter key para login
+    const passInput = document.getElementById('login-pass');
+    if (passInput) {
+        passInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') login();
+        });
+    }
+    const userInput = document.getElementById('login-user');
+    if (userInput) {
+        userInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') document.getElementById('login-pass').focus();
+        });
+    }
+}
+
+// ============================================
+// PANTALLA: HOME — Rediseñada
+// ============================================
+function renderHome(container) {
+    const saludo = getSaludo();
+
+    // Banner HTML
+    let bannerHTML = '';
+    if (BANNER_CONFIG.type !== 'none') {
+        const bgStyle = BANNER_CONFIG.type === 'image'
+            ? `background-image: url('${BANNER_CONFIG.imageUrl}'); background-size: cover; background-position: center;`
+            : `background: ${BANNER_CONFIG.gradient};`;
+        const overlayStyle = BANNER_CONFIG.type === 'image'
+            ? `background: ${BANNER_CONFIG.overlay};`
+            : '';
+        bannerHTML = `
+            <div class="home-banner">
+                <div class="home-banner-bg" style="${bgStyle}"></div>
+                ${overlayStyle ? `<div class="home-banner-overlay" style="${overlayStyle}"></div>` : ''}
+                <div class="home-banner-content">
+                    ${BANNER_CONFIG.icon ? `<i class="${BANNER_CONFIG.icon}" style="font-size: 1.75rem; margin-bottom: 0.5rem; opacity: 0.9;"></i>` : ''}
+                    <h3>${BANNER_CONFIG.title}</h3>
+                    <p>${BANNER_CONFIG.subtitle}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    const menuItems = [
+        {
+            hash: 'nuevo-pedido',
+            icon: 'fas fa-plus',
+            bg: 'var(--gradient-primary)',
+            label: 'Nuevo Pedido',
+            desc: 'Crear un pedido',
+            colorClass: 'card--primary'
+        },
+        {
+            hash: 'pedidos',
+            icon: 'fas fa-clipboard-list',
+            bg: 'var(--gradient-secondary)',
+            label: 'Pedidos del Día',
+            desc: 'Ver y gestionar',
+            colorClass: 'card--blue'
+        },
+        {
+            hash: 'cerrar-caja',
+            icon: 'fas fa-cash-register',
+            bg: 'var(--gradient-warning)',
+            label: 'Cerrar Caja',
+            desc: 'Balance del día',
+            colorClass: 'card--amber'
+        },
+        {
+            hash: 'historial-cajas',
+            icon: 'fas fa-chart-line',
+            bg: 'var(--gradient-dark)',
+            label: 'Historial',
+            desc: 'Cajas cerradas',
+            colorClass: 'card--dark'
+        },
+        {
+            hash: 'gestionar-productos',
+            icon: 'fas fa-boxes',
+            bg: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+            label: 'Productos',
+            desc: 'ABM completo',
+            colorClass: 'card--primary'
+        },
+        {
+            hash: null,
+            icon: 'fas fa-chart-bar',
+            bg: 'var(--gradient-dark)',
+            label: 'Métricas',
+            desc: 'Plan Premium',
+            colorClass: 'card--disabled',
+            disabled: true
+        }
+    ];
+
+    const cardsHTML = menuItems.map((item, i) => {
+        const delay = (i * 60) + 100;
+        const clickHandler = item.disabled ? '' : `onclick="location.hash='${item.hash}'"`;
+        const disabledClass = item.disabled ? 'card--disabled' : '';
+        return `
+            <div class="home-card ${item.colorClass} ${disabledClass} stagger-item" 
+                 style="animation-delay: ${delay}ms" ${clickHandler}>
+                <div class="card-icon" style="background: ${item.bg};">
+                    <i class="${item.icon}"></i>
+                </div>
+                <span class="card-label">${item.label}</span>
+                <span class="card-desc">${item.desc}</span>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="page-transition">
+            ${bannerHTML}
+
+            <div class="home-clock-bar">
+                <div class="clock-greeting">
+                    <span class="greeting-text">${saludo.text}</span>
+                    <span class="greeting-sub">Sistema de comanda</span>
+                </div>
+                <div class="clock-time">
+                    <span class="time-display" id="live-time">${getTimeString()}</span>
+                    <span class="date-display" id="live-date">${getDateString()}</span>
+                </div>
+            </div>
+
+            <div class="home-grid">
+                ${cardsHTML}
+            </div>
         </div>
     `;
+
+    startClock();
 }
 
 // ============================================
@@ -247,10 +450,11 @@ async function renderNuevoPedido(container) {
     const allCategories = [...new Set(productos.map(p => p.categoria))].sort();
 
     let html = `
-        <div class="search-container mb-2" style="position: sticky; top: 0; background: var(--bg-body); z-index: 100; padding: 1rem 0;">
-            <div class="form-group" style="margin-bottom: 1rem;">
+        <div class="page-transition">
+        <div class="search-container mb-2" style="position: sticky; top: 0; z-index: 100; padding: 1rem;">
+            <div class="form-group" style="margin-bottom: 0.75rem;">
                 <div style="position: relative;">
-                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-400);"></i>
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                     <input type="text" id="busquedaProducto" class="form-input" placeholder="Buscar producto..." value="${filtroBusqueda}" oninput="actualizarFiltroBusqueda(this.value)" style="padding-left: 38px;">
                 </div>
             </div>
@@ -290,8 +494,8 @@ async function renderNuevoPedido(container) {
 
     for (const [categoria, prods] of Object.entries(categorias)) {
         html += `
-            <h2 style="margin-top: 1.5rem;">
-                <i class="fas fa-tag" style="font-size: 1.25rem;"></i>
+            <h2 style="margin-top: 1.25rem;">
+                <i class="fas fa-tag" style="font-size: 1.125rem;"></i>
                 ${categoria}
             </h2>
         `;
@@ -299,13 +503,13 @@ async function renderNuevoPedido(container) {
         prods.forEach(producto => {
             const cantidad = getCantidadEnPedido(producto.id);
             html += `
-                <div class="producto-item" id="item-${producto.id}" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                <div class="producto-item" id="item-${producto.id}" style="flex-direction: column; align-items: stretch; gap: 0.625rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <div class="producto-info">
                             <div class="producto-nombre">${producto.nombre}</div>
                             <div class="producto-categoria">${producto.categoria}</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <div class="producto-precio">$${formatCurrency(producto.precio)}</div>
                             <div class="producto-actions">
                                 <button class="btn-cantidad" onclick="cambiarCantidad('${producto.id}', -1)">
@@ -321,7 +525,7 @@ async function renderNuevoPedido(container) {
                     <div id="nota-container-${producto.id}">
                         ${cantidad > 0 ? `
                             <div class="producto-nota" style="margin-top: 2px;">
-                                <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
+                                <input type="text" class="form-input" style="font-size: 0.8125rem; padding: 0.5rem; background: var(--bg-hover);" 
                                     placeholder="📝 Agregar nota específica..." 
                                     value="${pedidoActual.find(i => i.id === producto.id)?.nota || ''}"
                                     onchange="actualizarNota('${producto.id}', this.value)">
@@ -336,14 +540,13 @@ async function renderNuevoPedido(container) {
     html += '</div>';
     html += '<div id="seccion-resumen-pedido">';
 
-    const total = calcularTotal();
     const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
 
     if (itemsCount > 0) {
         html += renderHTMLResumenPedido();
     }
 
-    html += '</div>';
+    html += '</div></div>';
     container.innerHTML = html;
 }
 
@@ -360,7 +563,7 @@ function renderHTMLResumenPedido() {
                             <span>${item.cantidad}x ${item.producto}</span>
                             <span>$${formatCurrency(item.cantidad * item.precio)}</span>
                         </div>
-                        ${item.nota ? `<small class="text-muted" style="font-style: italic; color: var(--primary-600);">Nota: ${item.nota}</small>` : ''}
+                        ${item.nota ? `<small class="text-muted" style="font-style: italic; color: rgba(255,255,255,0.7);">Nota: ${item.nota}</small>` : ''}
                     </div>
                 `).join('')}
             </div>
@@ -371,24 +574,24 @@ function renderHTMLResumenPedido() {
         </div>
         
         <div class="card">
-            <h3 style="margin-bottom: 1.25rem; font-size: 1.125rem;">
-                <i class="fas fa-user"></i> Datos del Cliente
+            <h3 style="margin-bottom: 1.25rem; font-size: 1.0625rem;">
+                <i class="fas fa-user" style="color: var(--primary-600);"></i> Datos del Cliente
             </h3>
             
             <div class="form-group">
                 <label class="form-label">Nombre del Cliente <span style="color: var(--danger-500);">*</span></label>
                 <input type="text" id="nombreCliente" class="form-input" placeholder="Nombre completo" required minlength="3">
-                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Mínimo 3 caracteres</small>
+                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.75rem;">Mínimo 3 caracteres</small>
             </div>
             
             <div class="form-group">
-                <label class="form-label"><i class="fas fa-mobile-alt"></i> Celular (WhatsApp)</label>
+                <label class="form-label"><i class="fas fa-mobile-alt" style="margin-right: 0.25rem;"></i> Celular (WhatsApp)</label>
                 <input type="tel" id="celularCliente" class="form-input" placeholder="Ej: 11 1234 5678">
-                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">Solo números, sin guiones ni espacios (opcional)</small>
+                <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.75rem;">Solo números (opcional)</small>
             </div>
             
             <div class="form-group">
-                <label class="form-label"><i class="fas fa-truck"></i> Tipo de Entrega</label>
+                <label class="form-label"><i class="fas fa-truck" style="margin-right: 0.25rem;"></i> Tipo de Entrega</label>
                 <select id="tipoEntrega" class="form-select" onchange="toggleDomicilio()">
                     <option value="retira">🏠 Retira en el local</option>
                     <option value="envio">🚚 Requiere envío</option>
@@ -396,25 +599,25 @@ function renderHTMLResumenPedido() {
             </div>
             
             <div class="form-group hidden" id="domicilio-group">
-                <label class="form-label"><i class="fas fa-map-marker-alt"></i> Domicilio de Entrega</label>
+                <label class="form-label"><i class="fas fa-map-marker-alt" style="margin-right: 0.25rem;"></i> Domicilio de Entrega</label>
                 <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
             </div>
             
             <div class="form-group">
-                <label class="form-label"><i class="fas fa-comment-alt"></i> Observaciones</label>
+                <label class="form-label"><i class="fas fa-comment-alt" style="margin-right: 0.25rem;"></i> Observaciones</label>
                 <textarea id="observaciones" class="form-textarea" placeholder="Ej: Sin cebolla, extra queso..."></textarea>
             </div>
             
             <div class="form-group">
-                <label class="form-label"><i class="fas fa-credit-card"></i> Método de Pago</label>
+                <label class="form-label"><i class="fas fa-credit-card" style="margin-right: 0.25rem;"></i> Método de Pago</label>
                 <select id="metodoPago" class="form-select">
-                    <option value="mercadopago"><i class="fas fa-qrcode"></i>📠 Mercado Pago</option>
-                    <option value="efectivo"><i class="fas fa-money-bill-wave"></i>💵 Efectivo</option>
+                    <option value="mercadopago">📱 Mercado Pago</option>
+                    <option value="efectivo">💵 Efectivo</option>
                     <option value="point">💳 POINT (Posnet)</option>
                 </select>
             </div>
             
-            <button class="btn btn-primary" onclick="confirmarPedido()" style="margin-top: 1.5rem;">
+            <button class="btn btn-primary" onclick="confirmarPedido()" style="margin-top: 1rem;">
                 <i class="fas fa-check-circle"></i>
                 Confirmar Pedido
             </button>
@@ -452,7 +655,6 @@ function cambiarCantidad(productoId, delta) {
     }
 
     // (V10) Optimización: Actualización parcial del DOM
-    // En lugar de renderizar toda la página, actualizamos solo lo necesario
     actualizarUIDespuesDeCambioCantidad(productoId);
 }
 
@@ -463,6 +665,9 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
     const qtyDisplay = document.getElementById(`qty-${productoId}`);
     if (qtyDisplay) {
         qtyDisplay.textContent = cantidad;
+        // Visual feedback
+        qtyDisplay.style.transform = 'scale(1.3)';
+        setTimeout(() => { qtyDisplay.style.transform = 'scale(1)'; }, 150);
     }
 
     // 2. Mostrar/Ocultar campo de notas
@@ -471,7 +676,7 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
         if (cantidad > 0 && !notaContainer.innerHTML.trim()) {
             notaContainer.innerHTML = `
                 <div class="producto-nota" style="margin-top: 2px;">
-                    <input type="text" class="form-input" style="font-size: 0.875rem; padding: 0.5rem; background: var(--gray-50);" 
+                    <input type="text" class="form-input" style="font-size: 0.8125rem; padding: 0.5rem; background: var(--bg-hover);" 
                         placeholder="📝 Agregar nota específica..." 
                         onchange="actualizarNota('${productoId}', this.value)">
                 </div>
@@ -508,11 +713,11 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
             if (pago) document.getElementById('metodoPago').value = pago;
         } else {
             seccionResumen.innerHTML = `
-                <div class="card text-center" style="padding: 3rem 2rem;">
-                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                        <i class="fas fa-shopping-basket" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                <div class="card text-center" style="padding: 2.5rem 1.5rem;">
+                    <div style="width: 64px; height: 64px; background: var(--bg-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                        <i class="fas fa-shopping-basket" style="font-size: 2rem; color: var(--text-muted);"></i>
                     </div>
-                    <p class="text-muted" style="font-size: 1.125rem;">Agregá productos al pedido usando los botones +</p>
+                    <p class="text-muted" style="font-size: 1rem;">Agregá productos al pedido usando los botones +</p>
                 </div>
             `;
         }
@@ -536,7 +741,7 @@ async function cargarProductos() {
     } catch (error) {
         console.error('Error al cargar productos:', error);
         if (!productos.length) {
-            showToast('Error al cargar productos: ' + error.message);
+            showToast('Error al cargar productos: ' + error.message, 'error');
         }
     }
 }
@@ -555,7 +760,7 @@ function actualizarFiltroBusqueda(val) {
             input.focus();
             input.setSelectionRange(val.length, val.length);
         }
-    }, 150); // 150ms es suficiente para ser fluido pero evitar jank extremo
+    }, 150);
 }
 
 function filtrarCategoria(cat) {
@@ -584,22 +789,22 @@ async function confirmarPedido() {
     const total = calcularTotal();
 
     if (pedidoActual.length === 0) {
-        showToast('El pedido está vacío');
+        showToast('El pedido está vacío', 'error');
         return;
     }
 
     if (nombre.length < 3) {
-        showToast('El nombre debe tener al menos 3 caracteres');
+        showToast('El nombre debe tener al menos 3 caracteres', 'error');
         return;
     }
 
     if (tipoEntrega === 'envio' && !domicilio) {
-        showToast('Debés ingresar el domicilio de entrega');
+        showToast('Debés ingresar el domicilio de entrega', 'error');
         return;
     }
 
     if (celular && !/^\d{8,15}$/.test(celular.replace(/\s/g, ''))) {
-        showToast('El celular debe contener solo números (mínimo 8)');
+        showToast('El celular debe contener solo números (mínimo 8)', 'error');
         return;
     }
 
@@ -624,16 +829,16 @@ async function confirmarPedido() {
             if (metodoPago === 'mercadopago' && response.linkPago) {
                 mostrarLinkPago(response);
             } else {
-                showToast('✅ Pedido creado exitosamente');
+                showToast('✅ Pedido creado exitosamente', 'success');
                 pedidoActual = [];
                 location.hash = 'pedidos';
             }
         } else {
-            showToast('Error al crear pedido: ' + response.error);
+            showToast('Error al crear pedido: ' + response.error, 'error');
         }
     } catch (error) {
         hideLoading();
-        showToast('Error de conexión: ' + error.message);
+        showToast('Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -652,12 +857,13 @@ function toggleDomicilio() {
 function mostrarLinkPago(pedidoData) {
     const container = document.getElementById('app-container');
     container.innerHTML = `
+        <div class="page-transition">
         <div class="card text-center">
-            <div style="width: 80px; height: 80px; background: var(--primary-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                <i class="fas fa-check-circle" style="font-size: 2.5rem; color: var(--primary-600);"></i>
+            <div style="width: 72px; height: 72px; background: var(--gradient-success); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: var(--shadow-lg);">
+                <i class="fas fa-check-circle" style="font-size: 2rem; color: white;"></i>
             </div>
-            <h2 style="justify-content: center; margin-bottom: 0.5rem;">Pedido Creado</h2>
-            <p class="text-muted">ID: ${pedidoData.id}</p>
+            <h2 style="justify-content: center; margin-bottom: 0.25rem;">Pedido Creado</h2>
+            <p class="text-muted" style="margin-bottom: 1.5rem;">ID: ${pedidoData.id}</p>
             
             <div class="qr-container">
                 <h3><i class="fas fa-qrcode"></i> Escaneá el QR para pagar</h3>
@@ -665,9 +871,9 @@ function mostrarLinkPago(pedidoData) {
             </div>
             
             <p class="mb-1" style="font-weight: 600;">O copiá el link:</p>
-            <input type="text" class="form-input mb-2" value="${pedidoData.linkPago}" readonly onclick="this.select()" style="text-align: center; font-family: monospace;">
+            <input type="text" class="form-input mb-2" value="${pedidoData.linkPago}" readonly onclick="this.select()" style="text-align: center; font-family: monospace; font-size: 0.8125rem;">
             
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.625rem;">
                 <button class="btn btn-primary" onclick="window.open('${pedidoData.linkPago}', '_blank')">
                     <i class="fas fa-external-link-alt"></i>
                     Abrir Mercado Pago
@@ -685,6 +891,7 @@ function mostrarLinkPago(pedidoData) {
                     Ver Pedidos del Día
                 </button>
             </div>
+        </div>
         </div>
     `;
 }
@@ -726,79 +933,95 @@ async function renderPedidos(container) {
 
         if (pedidosDelDia.length === 0) {
             container.innerHTML = `
+                <div class="page-transition">
                 <div class="card text-center" style="padding: 3rem 2rem;">
-                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                        <i class="fas fa-inbox" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    <div style="width: 72px; height: 72px; background: var(--bg-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; color: var(--text-muted);"></i>
                     </div>
-                    <p class="text-muted" style="font-size: 1.125rem; margin-bottom: 1.5rem;">No hay pedidos para hoy</p>
+                    <p class="text-muted" style="font-size: 1.0625rem; margin-bottom: 1.5rem;">No hay pedidos para hoy</p>
                     <button class="btn btn-primary" onclick="location.hash='nuevo-pedido'">
                         <i class="fas fa-plus-circle"></i>
                         Crear Primer Pedido
                     </button>
                 </div>
+                </div>
             `;
             return;
         }
 
-        let html = '';
+        let html = '<div class="page-transition">';
 
-        pedidosDelDia.forEach(pedido => {
-            const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
+        pedidosDelDia.forEach((pedido, index) => {
+            const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
             const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
-            const entregaBadge = `<span class="badge badge-${pedido.tipoEntrega === 'retira' ? 'blue' : 'orange'}" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
+            const entregaBadge = `<span class="badge" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
+
+            // Estado border-left color
+            const borderColors = {
+                pendiente: '#fbbf24',
+                pagado: '#22c55e',
+                cancelado: '#ef4444',
+                entregado: '#8b5cf6'
+            };
+            const borderColor = borderColors[pedido.estado] || 'var(--border-color)';
 
             html += `
-                <div class="card">
+                <div class="card stagger-item" style="animation-delay: ${index * 50}ms; border-left: 4px solid ${borderColor};">
                     <div class="card-header">
                         <div>
                         <div class="card-title">
                             <i class="fas fa-receipt" style="color: var(--primary-600);"></i>
                             ${pedido.id}
-                            <span style="font-size: 0.9em; font-weight: normal; color: var(--gray-500);">
-                                - ${pedido.nombre || 'Cliente'}
+                            <span style="font-size: 0.85em; font-weight: normal; color: var(--text-muted);">
+                                — ${pedido.nombre || 'Cliente'}
                             </span>
                         </div>
                         <div class="card-subtitle"><i class="far fa-clock"></i> ${formatDateTime(pedido.fecha)}</div>
-                        ${pedido.domicilio ? `<div style="font-size: 0.875em; margin-top: 0.5rem; color: var(--gray-600);"><i class="fas fa-map-marker-alt"></i> ${pedido.domicilio}</div>` : ''}
-                        ${pedido.celular ? `<div style="font-size: 0.875em; margin-top: 0.25rem; color: var(--gray-600);"><i class="fas fa-phone"></i> ${pedido.celular}</div>` : ''}
+                        ${pedido.domicilio ? `<div style="font-size: 0.8125em; margin-top: 0.375rem; color: var(--text-secondary);"><i class="fas fa-map-marker-alt" style="color: var(--danger-500);"></i> ${pedido.domicilio}</div>` : ''}
+                        ${pedido.celular ? `<div style="font-size: 0.8125em; margin-top: 0.25rem; color: var(--text-secondary);"><i class="fas fa-phone" style="color: var(--primary-600);"></i> ${pedido.celular}</div>` : ''}
                     </div>
-                    <div style="text-align: right; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                    <div style="text-align: right; display: flex; flex-direction: column; gap: 0.375rem; align-items: flex-end;">
                         ${estadoBadge}
                         ${metodoBadge}
                         ${entregaBadge}
                     </div>
                     </div>
                     <div class="card-body">
-                        <strong style="color: var(--gray-700);"><i class="fas fa-list"></i> Items:</strong>
-                        <ul style="margin: 0.75rem 0; padding-left: 1.5rem; color: var(--gray-600);">
+                        <strong style="color: var(--text-primary); font-size: 0.8125rem;"><i class="fas fa-list"></i> Items:</strong>
+                        <ul style="margin: 0.625rem 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
                             ${pedido.items.map(item => `
-                                <li style="margin-bottom: 0.375rem;">
-                                    ${item.cantidad}x ${item.producto} - $${formatCurrency(item.cantidad * item.precio)}
+                                <li style="margin-bottom: 0.25rem;">
+                                    ${item.cantidad}x ${item.producto} — <strong>$${formatCurrency(item.cantidad * item.precio)}</strong>
                                     ${item.nota ? `<br><small style="font-style: italic; color: var(--primary-600); margin-left: 10px;">• ${item.nota}</small>` : ''}
                                 </li>
                             `).join('')}
                         </ul>
-                        ${pedido.observaciones ? `<p style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-comment-alt"></i> Observaciones:</strong> ${pedido.observaciones}</p>` : ''}
-                    ${pedido.tipoEntrega === 'envio' && pedido.cadete ? `<p style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-top: 0.75rem;"><strong><i class="fas fa-user-tag"></i> Cadete:</strong> ${window.cadetes.find(c => c.id === pedido.cadete)?.nombre || pedido.cadete}</p>` : ''}
+                        <div style="display: flex; justify-content: flex-end; font-size: 1.125rem; font-weight: 800; color: var(--primary-600); letter-spacing: -0.02em;">
+                            $${formatCurrency(pedido.total)}
+                        </div>
+                        ${pedido.observaciones ? `<p style="background: var(--bg-hover); padding: 0.625rem; border-radius: var(--radius); margin-top: 0.625rem; font-size: 0.8125rem;"><strong><i class="fas fa-comment-alt"></i> Obs:</strong> ${pedido.observaciones}</p>` : ''}
+                    ${pedido.tipoEntrega === 'envio' && pedido.cadete ? `<p style="background: var(--primary-50); padding: 0.625rem; border-radius: var(--radius); margin-top: 0.5rem; font-size: 0.8125rem;"><strong><i class="fas fa-user-tag"></i> Cadete:</strong> ${window.cadetes.find(c => c.id === pedido.cadete)?.nombre || pedido.cadete}</p>` : ''}
                 </div>
                 <div class="card-footer">
                     ${renderBotonesEstado(pedido)}
                     ${pedido.tipoEntrega === 'envio' && (pedido.estado === 'pagado' || (pedido.estado === 'pendiente' && pedido.metodoPago === 'efectivo')) ? `
-                        <div style="display: inline-block; position: relative; margin-left: 10px;">
-                            <i class="fas fa-motorcycle" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--primary-600); pointer-events: none; z-index: 1;"></i>
+                        <div style="display: inline-block; position: relative; margin-left: 4px;">
+                            <i class="fas fa-motorcycle" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--primary-600); pointer-events: none; z-index: 1;"></i>
                             <select class="form-select" style="
                                 display: inline-block; 
                                 width: auto; 
-                                min-width: 180px;
-                                padding-left: 38px;
-                                background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+                                min-width: 160px;
+                                padding-left: 34px;
+                                padding-top: 0.5rem;
+                                padding-bottom: 0.5rem;
+                                font-size: 0.8125rem;
+                                background: var(--bg-surface);
                                 border: 2px solid var(--primary-200);
-                                color: var(--primary-700);
+                                color: var(--primary-600);
                                 font-weight: 600;
                                 cursor: pointer;
-                                transition: all 0.2s ease;
-                            " onchange="asignarCadete('${pedido.id}', this.value)" onmouseover="this.style.borderColor='var(--primary-400)'; this.style.background='linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%)'" onmouseout="this.style.borderColor='var(--primary-200)'; this.style.background='linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%)'">
-                                <option value="">${pedido.cadete ? '🔄 Cambiar cadete' : '👤 Asignar cadete'}</option>
+                            " onchange="asignarCadete('${pedido.id}', this.value)">
+                                <option value="">${pedido.cadete ? '🔄 Cambiar' : '👤 Asignar cadete'}</option>
                                 ${window.cadetes.map(c => `<option value="${c.id}" ${pedido.cadete === c.id ? 'selected' : ''}>${c.nombre}</option>`).join('')}
                             </select>
                         </div>
@@ -811,11 +1034,12 @@ async function renderPedidos(container) {
             `;
         });
 
+        html += '</div>';
         container.innerHTML = html;
 
     } catch (error) {
         hideLoading();
-        showToast('Error al cargar pedidos: ' + error.message);
+        showToast('Error al cargar pedidos: ' + error.message, 'error');
     }
 }
 
@@ -823,7 +1047,7 @@ function renderBotonesEstado(pedido) {
     let botones = '';
     if (pedido.estado === 'pendiente') {
         botones += `
-            <button class="btn btn-small btn-primary" onclick="cambiarEstado('${pedido.id}', 'pagado')">
+            <button class="btn btn-small btn-success" onclick="cambiarEstado('${pedido.id}', 'pagado')">
                 <i class="fas fa-check"></i> Pagado
             </button>
             <button class="btn btn-small btn-danger" onclick="cambiarEstado('${pedido.id}', 'cancelado')">
@@ -861,15 +1085,15 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
         hideLoading();
 
         if (response.success) {
-            showToast(`Estado actualizado a: ${nuevoEstado}`);
+            showToast(`Estado actualizado a: ${nuevoEstado}`, 'success');
             const container = document.getElementById('app-container');
             renderPedidos(container);
         } else {
-            showToast('Error al actualizar estado');
+            showToast('Error al actualizar estado', 'error');
         }
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -887,15 +1111,15 @@ async function asignarCadete(pedidoId, cadeteId) {
         hideLoading();
 
         if (response.success) {
-            showToast('✅ Cadete asignado correctamente');
+            showToast('✅ Cadete asignado correctamente', 'success');
             const container = document.getElementById('app-container');
             renderPedidos(container);
         } else {
-            showToast('Error al asignar cadete');
+            showToast('Error al asignar cadete', 'error');
         }
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -1064,11 +1288,12 @@ async function renderCerrarCaja(container) {
         window.totalGeneralCaja = totalGeneral;
 
         container.innerHTML = `
+            <div class="page-transition">
             <div class="card">
                 <h2 style="margin-bottom: 0.5rem;">
                     <i class="fas fa-calculator"></i> Resumen del Día
                 </h2>
-                <p class="text-muted mb-2" style="font-size: 0.9375rem;">${formatDate(new Date())}</p>
+                <p class="text-muted mb-2" style="font-size: 0.875rem;">${formatDate(new Date())}</p>
                 
                 <div class="table-responsive">
                     <table>
@@ -1077,20 +1302,20 @@ async function renderCerrarCaja(container) {
                             <th style="text-align: right;"><i class="fas fa-dollar-sign"></i> Monto</th>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-qrcode" style="color: var(--secondary-600);"></i>📠 Mercado Pago</td>
+                            <td>📱 Mercado Pago</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalMP)}</strong></td>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-money-bill-wave" style="color: var(--primary-600);"></i>💵 Efectivo</td>
+                            <td>💵 Efectivo</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalEfectivo)}</strong></td>
                         </tr>
                         <tr>
                             <td>💳 POINT (Posnet)</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalPoint)}</strong></td>
                         </tr>
-                        <tr style="background: var(--primary-50);">
+                        <tr style="background: var(--bg-hover);">
                             <td><strong><i class="fas fa-coins"></i> TOTAL</strong></td>
-                            <td style="text-align: right;"><strong style="color: var(--primary-600); font-size: 1.25rem;">$${formatCurrency(totalGeneral)}</strong></td>
+                            <td style="text-align: right;"><strong style="color: var(--primary-600); font-size: 1.125rem;">$${formatCurrency(totalGeneral)}</strong></td>
                         </tr>
                         <tr>
                             <td><i class="fas fa-shopping-bag"></i> Cantidad de pedidos</td>
@@ -1101,21 +1326,21 @@ async function renderCerrarCaja(container) {
             </div>
             
             <div class="card" style="border-left: 4px solid var(--warning-500);">
-                <h3 style="margin-bottom: 1rem;">
-                    <i class="fas fa-cash-register"></i> Dinero Real en Caja
+                <h3 style="margin-bottom: 1rem; font-size: 1.0625rem;">
+                    <i class="fas fa-cash-register" style="color: var(--warning-500);"></i> Dinero Real en Caja
                 </h3>
                 <div class="form-group">
                     <label class="form-label">💵 Dinero Real Contado ($)</label>
                     <input type="number" id="dineroReal" class="form-input" placeholder="Ingresá el dinero real en caja" min="0" step="0.01" oninput="calcularDiferencia()">
-                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.8125rem;">
+                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.75rem;">
                         Ingresá el monto total que contaste físicamente en la caja
                     </small>
                 </div>
                 
-                <div id="diferencia-container" class="hidden" style="padding: 1rem; border-radius: var(--radius-md); margin-top: 1rem;">
+                <div id="diferencia-container" class="hidden" style="padding: 0.875rem; border-radius: var(--radius-md); margin-top: 0.75rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-weight: 600;">Diferencia:</span>
-                        <span id="diferencia-monto" style="font-size: 1.25rem; font-weight: 800;"></span>
+                        <span id="diferencia-monto" style="font-size: 1.125rem; font-weight: 800;"></span>
                     </div>
                 </div>
             </div>
@@ -1129,11 +1354,12 @@ async function renderCerrarCaja(container) {
                 <i class="fas fa-history"></i>
                 Ver Historial
             </button>
+            </div>
         `;
 
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -1151,6 +1377,7 @@ function calcularDiferencia() {
             container.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
             container.style.color = '#065f46';
             montoSpan.style.color = '#065f46';
+            montoSpan.textContent = '✓ Caja cuadrada';
         } else if (diferencia > 0) {
             container.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
             container.style.color = '#92400e';
@@ -1171,7 +1398,7 @@ async function confirmarCierreCaja() {
     const dineroReal = parseFloat(document.getElementById('dineroReal').value) || 0;
 
     if (dineroReal === 0) {
-        showToast('Por favor ingresá el dinero real en caja');
+        showToast('Por favor ingresá el dinero real en caja', 'error');
         return;
     }
 
@@ -1210,11 +1437,11 @@ async function confirmarCierreCaja() {
             alert(alertMsg);
             location.hash = 'historial-cajas';
         } else {
-            showToast('Error al cerrar caja');
+            showToast('Error al cerrar caja', 'error');
         }
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -1231,27 +1458,29 @@ async function renderHistorialCajas(container) {
 
         if (cajas.length === 0) {
             container.innerHTML = `
+                <div class="page-transition">
                 <div class="card text-center" style="padding: 3rem 2rem;">
-                    <div style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-                        <i class="fas fa-archive" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    <div style="width: 72px; height: 72px; background: var(--bg-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-archive" style="font-size: 2rem; color: var(--text-muted);"></i>
                     </div>
-                    <p class="text-muted" style="font-size: 1.125rem;">No hay cajas cerradas aún</p>
+                    <p class="text-muted" style="font-size: 1.0625rem;">No hay cajas cerradas aún</p>
+                </div>
                 </div>
             `;
             return;
         }
 
-        let html = '<div class="table-responsive"><table>';
+        let html = '<div class="page-transition"><div class="table-responsive"><table>';
         html += `
             <tr>
                 <th><i class="far fa-calendar"></i> Fecha</th>
-                <th><i class="fas fa-qrcode"></i> MP</th>
-                <th><i class="fas fa-money-bill"></i> Efectivo</th>
-                <th>💳 POINT</th>
+                <th>📱 MP</th>
+                <th>💵 Efect.</th>
+                <th>💳 Point</th>
                 <th><i class="fas fa-coins"></i> Total</th>
                 <th>💵 Real</th>
                 <th>📊 Dif.</th>
-                <th><i class="fas fa-shopping-bag"></i> Pedidos</th>
+                <th># Ped.</th>
             </tr>
         `;
 
@@ -1261,13 +1490,13 @@ async function renderHistorialCajas(container) {
             let diferenciaText = '$' + formatCurrency(Math.abs(diferencia));
 
             if (diferencia === 0) {
-                diferenciaStyle = 'color: #065f46; font-weight: 700;';
+                diferenciaStyle = 'color: #059669; font-weight: 700;';
                 diferenciaText = '✓';
             } else if (diferencia > 0) {
-                diferenciaStyle = 'color: #92400e; font-weight: 700;';
+                diferenciaStyle = 'color: #d97706; font-weight: 700;';
                 diferenciaText = '+$' + formatCurrency(diferencia);
             } else {
-                diferenciaStyle = 'color: #991b1b; font-weight: 700;';
+                diferenciaStyle = 'color: #dc2626; font-weight: 700;';
                 diferenciaText = '-$' + formatCurrency(Math.abs(diferencia));
             }
 
@@ -1285,13 +1514,13 @@ async function renderHistorialCajas(container) {
             `;
         });
 
-        html += '</table></div>';
+        html += '</table></div></div>';
 
         container.innerHTML = html;
 
     } catch (error) {
         hideLoading();
-        showToast('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -1309,6 +1538,7 @@ async function renderGestionProductos(container) {
         hideLoading();
 
         let html = `
+            <div class="page-transition">
             <div class="mb-2">
                 <button class="btn btn-primary" onclick="mostrarFormularioProducto()">
                     <i class="fas fa-plus-circle"></i>
@@ -1317,18 +1547,18 @@ async function renderGestionProductos(container) {
             </div>
             
             <div id="formulario-producto" class="card mb-2 hidden" style="border-left: 4px solid var(--primary-600);">
-                <h3 id="form-titulo" style="margin-bottom: 1.25rem;">
-                    <i class="fas fa-box"></i> Nuevo Producto
+                <h3 id="form-titulo" style="margin-bottom: 1.25rem; font-size: 1.0625rem;">
+                    <i class="fas fa-box" style="color: var(--primary-600);"></i> Nuevo Producto
                 </h3>
                 <input type="hidden" id="prod-id">
                 
                 <div class="form-group">
-                    <label class="form-label"><i class="fas fa-tag"></i> Nombre</label>
+                    <label class="form-label"><i class="fas fa-tag" style="margin-right: 0.25rem;"></i> Nombre</label>
                     <input type="text" id="prod-nombre" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label"><i class="fas fa-folder"></i> Categoría</label>
+                    <label class="form-label"><i class="fas fa-folder" style="margin-right: 0.25rem;"></i> Categoría</label>
                     <input type="text" id="prod-categoria" class="form-input" list="categorias-list" required>
                     <datalist id="categorias-list">
                         <option value="Bebidas calientes">
@@ -1340,18 +1570,18 @@ async function renderGestionProductos(container) {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label"><i class="fas fa-dollar-sign"></i> Precio ($)</label>
+                    <label class="form-label"><i class="fas fa-dollar-sign" style="margin-right: 0.25rem;"></i> Precio ($)</label>
                     <input type="number" id="prod-precio" class="form-input" required min="0">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <input type="checkbox" id="prod-activo" checked style="width: auto;">
+                        <input type="checkbox" id="prod-activo" checked style="width: auto; accent-color: var(--primary-600);">
                         <i class="fas fa-check-circle" style="color: var(--primary-600);"></i> Activo
                     </label>
                 </div>
                 
-                <div style="display: flex; gap: 0.75rem;">
+                <div style="display: flex; gap: 0.625rem;">
                     <button class="btn btn-success" onclick="guardarProducto()" style="flex: 1;">
                         <i class="fas fa-save"></i> Guardar
                     </button>
@@ -1378,11 +1608,11 @@ async function renderGestionProductos(container) {
             html += `
                 <tr>
                     <td>
-                        <div style="font-weight: 700; color: var(--gray-800);">${prod.nombre}</div>
-                        <div style="font-size: 0.8125em; color: var(--gray-500);">${prod.categoria}</div>
+                        <div style="font-weight: 700; color: var(--text-primary);">${prod.nombre}</div>
+                        <div style="font-size: 0.75em; color: var(--text-muted);">${prod.categoria}</div>
                     </td>
                     <td><strong style="color: var(--primary-600);">$${formatCurrency(prod.precio)}</strong></td>
-                    <td><span class="badge ${estadoClass}"><i class="fas fa-circle" style="font-size: 0.4rem;"></i> ${estadoTexto}</span></td>
+                    <td><span class="badge ${estadoClass}"><i class="fas fa-circle" style="font-size: 0.35rem;"></i> ${estadoTexto}</span></td>
                     <td>
                         <button class="btn btn-small btn-info" onclick='editarProducto(${JSON.stringify(prod)})'>
                             <i class="fas fa-edit"></i>
@@ -1392,12 +1622,12 @@ async function renderGestionProductos(container) {
             `;
         });
 
-        html += '</table></div>';
+        html += '</table></div></div>';
         container.innerHTML = html;
 
     } catch (error) {
         hideLoading();
-        showToast('Error al cargar productos: ' + error.message);
+        showToast('Error al cargar productos: ' + error.message, 'error');
     }
 }
 
@@ -1410,7 +1640,9 @@ function mostrarFormularioProducto(producto = null) {
     document.getElementById('prod-precio').value = producto ? producto.precio : '';
     document.getElementById('prod-activo').checked = producto ? producto.activo : true;
 
-    titulo.innerHTML = producto ? '<i class="fas fa-edit"></i> Editar Producto' : '<i class="fas fa-plus-circle"></i> Nuevo Producto';
+    titulo.innerHTML = producto
+        ? '<i class="fas fa-edit" style="color: var(--primary-600);"></i> Editar Producto'
+        : '<i class="fas fa-plus-circle" style="color: var(--primary-600);"></i> Nuevo Producto';
     form.classList.remove('hidden');
     form.scrollIntoView({ behavior: 'smooth' });
 }
@@ -1431,7 +1663,7 @@ async function guardarProducto() {
     const activo = document.getElementById('prod-activo').checked;
 
     if (!nombre || !categoria || !precio) {
-        showToast('Completá todos los campos obligatorios');
+        showToast('Completá todos los campos obligatorios', 'error');
         return;
     }
 
@@ -1450,15 +1682,15 @@ async function guardarProducto() {
         hideLoading();
 
         if (response.success) {
-            showToast(response.message || 'Producto guardado');
+            showToast(response.message || 'Producto guardado', 'success');
             ocultarFormularioProducto();
             renderGestionProductos(document.getElementById('app-container'));
         } else {
-            showToast('Error: ' + response.error);
+            showToast('Error: ' + response.error, 'error');
         }
     } catch (error) {
         hideLoading();
-        showToast('Error de conexión: ' + error.message);
+        showToast('Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -1540,9 +1772,24 @@ function getFechaHoy() {
     return `${year}-${month}-${day}`;
 }
 
-function showToast(message) {
+function showToast(message, type = 'default') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
+
+    // Remove all type classes
+    toast.className = 'toast';
+    toast.classList.add(`toast--${type}`);
+
+    // Set icon based on type
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        default: 'fas fa-info-circle'
+    };
+    const iconEl = toast.querySelector('i');
+    if (iconEl) iconEl.className = icons[type] || icons.default;
+
     toastMessage.textContent = message;
     toast.classList.add('show');
     setTimeout(() => {
