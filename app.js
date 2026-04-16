@@ -30,6 +30,7 @@ let cadetes = [];
 let filtroBusqueda = '';
 let filtroCategoria = 'Todas';
 let clockInterval = null;
+let operacionesPendientes = 0; // Contador global para sincronización
 
 // ============================================
 // THEME SYSTEM
@@ -76,6 +77,15 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         initTheme();
         window.addEventListener('hashchange', renderPage);
+        
+        // Protección contra cierre accidental (V11)
+        window.addEventListener('beforeunload', (e) => {
+            if (operacionesPendientes > 0) {
+                e.preventDefault();
+                e.returnValue = ''; // Muestra diálogo estándar del navegador
+            }
+        });
+
         renderPage();
     } catch (error) {
         console.error('Error fatal al iniciar:', error);
@@ -563,7 +573,7 @@ function renderHTMLResumenPedido() {
                             <span>${item.cantidad}x ${item.producto}</span>
                             <span>$${formatCurrency(item.cantidad * item.precio)}</span>
                         </div>
-                        ${item.nota ? `<small class="text-muted" style="font-style: italic; color: rgba(255,255,255,0.7);">Nota: ${item.nota}</small>` : ''}
+                        ${item.nota ? `<small class="text-muted" style="font-style: italic; color: rgba(255,255,255,0.7);" id="resumen-nota-${item.id}">Nota: ${item.nota}</small>` : `<div id="resumen-nota-${item.id}"></div>`}
                     </div>
                 `).join('')}
             </div>
@@ -773,31 +783,16 @@ function actualizarNota(productoId, nota) {
     if (itemIndex >= 0) {
         pedidoActual[itemIndex].nota = nota;
         
-        // Refrescar solo el resumen lateral/inferior sin re-renderizar toda la lista
-        const seccionResumen = document.getElementById('seccion-resumen-pedido');
-        if (seccionResumen && pedidoActual.length > 0) {
-            // Guardamos el estado de los inputs del cliente para no perderlos
-            const values = {
-                nombre: document.getElementById('nombreCliente')?.value,
-                celular: document.getElementById('celularCliente')?.value,
-                tipo: document.getElementById('tipoEntrega')?.value,
-                domi: document.getElementById('domicilioCliente')?.value,
-                obs: document.getElementById('observaciones')?.value,
-                pago: document.getElementById('metodoPago')?.value
-            };
-
-            seccionResumen.innerHTML = renderHTMLResumenPedido();
-
-            // Restauramos los valores
-            if (values.nombre) document.getElementById('nombreCliente').value = values.nombre;
-            if (values.celular) document.getElementById('celularCliente').value = values.celular;
-            if (values.tipo) {
-                document.getElementById('tipoEntrega').value = values.tipo;
-                if (values.tipo === 'envio') document.getElementById('domicilio-group')?.classList.remove('hidden');
+        // Optimización (V11): Actualización quirúrgica del DOM en lugar de render completo
+        const elNota = document.getElementById(`resumen-nota-${productoId}`);
+        if (elNota) {
+            if (nota) {
+                elNota.innerHTML = `Nota: ${nota}`;
+                elNota.className = 'text-muted';
+                elNota.style.cssText = 'font-style: italic; color: rgba(255,255,255,0.7); display: block; margin-top: 2px; font-size: 0.75rem;';
+            } else {
+                elNota.innerHTML = '';
             }
-            if (values.domi) document.getElementById('domicilioCliente').value = values.domi;
-            if (values.obs) document.getElementById('observaciones').value = values.obs;
-            if (values.pago) document.getElementById('metodoPago').value = values.pago;
         }
     }
 }
@@ -948,13 +943,18 @@ async function renderPedidos(container) {
     const fecha = getFechaHoy();
 
     try {
-        const [pedidosResponse, cadetesResponse] = await Promise.all([
-            apiGet('pedidos', { fecha }),
-            apiGet('cadetes')
-        ]);
+        // Optimización (V11): Solo llamar a cadetes si no están en memoria
+        const promises = [apiGet('pedidos', { fecha })];
+        if (!window.cadetes || window.cadetes.length === 0) {
+            promises.push(apiGet('cadetes'));
+        }
 
-        pedidosDelDia = pedidosResponse.pedidos || [];
-        window.cadetes = cadetesResponse.cadetes || [];
+        const responses = await Promise.all(promises);
+        
+        pedidosDelDia = responses[0].pedidos || [];
+        if (responses[1]) {
+            window.cadetes = responses[1].cadetes || [];
+        }
 
         hideLoading();
 
@@ -1193,26 +1193,40 @@ function renderBotonesEstado(pedido) {
 }
 
 async function cambiarEstado(pedidoId, nuevoEstado) {
-    showLoading();
+    // Optimización (V11): UI Optimista - Cambiar estado localmente primero
+    const index = pedidosDelDia.findIndex(p => p.id === pedidoId);
+    let estadoAnterior = '';
+    
+    if (index >= 0) {
+        estadoAnterior = pedidosDelDia[index].estado;
+        pedidosDelDia[index].estado = nuevoEstado;
+        // Renderizado instantáneo
+        renderPedidosList(document.getElementById('app-container'), pedidosDelDia);
+    }
+
+    incPending(); // Iniciar sincronización visual
+
     try {
-        const response = await apiPost({
-            action: 'actualizar_estado',
-            id: pedidoId,
-            estado: nuevoEstado
+        const response = await apiPost({ 
+            action: 'actualizar_estado', 
+            id: pedidoId, 
+            estado: nuevoEstado 
         });
-
-        hideLoading();
-
+        
         if (response.success) {
             showToast(`Estado actualizado a: ${nuevoEstado}`, 'success');
-            const container = document.getElementById('app-container');
-            renderPedidos(container);
         } else {
-            showToast('Error al actualizar estado', 'error');
+            throw new Error('Error al actualizar estado en el servidor');
         }
     } catch (error) {
-        hideLoading();
+        // Revertir cambio si falla
+        if (index >= 0) {
+            pedidosDelDia[index].estado = estadoAnterior;
+            renderPedidosList(document.getElementById('app-container'), pedidosDelDia);
+        }
         showToast('Error: ' + error.message, 'error');
+    } finally {
+        decPending(); // Finalizar sincronización visual
     }
 }
 
@@ -1917,10 +1931,27 @@ function showToast(message, type = 'default') {
     }, 3000);
 }
 
+// ============================================
+// HELPERS: PANTALLA DE CARGA Y SYNC (V11)
+// ============================================
 function showLoading() {
     document.getElementById('loading').classList.remove('hidden');
 }
 
 function hideLoading() {
     document.getElementById('loading').classList.add('hidden');
+}
+
+function incPending() {
+    operacionesPendientes++;
+    const el = document.getElementById('sync-indicator');
+    if (el) el.classList.remove('hidden');
+}
+
+function decPending() {
+    operacionesPendientes = Math.max(0, operacionesPendientes - 1);
+    if (operacionesPendientes === 0) {
+        const el = document.getElementById('sync-indicator');
+        if (el) el.classList.add('hidden');
+    }
 }
