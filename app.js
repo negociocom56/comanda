@@ -16,7 +16,7 @@ const BANNER_CONFIG = {
     // Overlay oscuro sobre la imagen (si type es 'image'):
     overlay: 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 100%)',
     // Texto del banner:
-    title: '¡Bienvenido a Comanda Digital!',
+    title: '¡Bienvenido Puro Sabor!',
     subtitle: 'Gestión inteligente de pedidos',
     // Ícono (Font Awesome class):
     icon: 'fas fa-store'
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         initTheme();
         window.addEventListener('hashchange', renderPage);
-        
+
         // Protección contra cierre accidental (V11)
         window.addEventListener('beforeunload', (e) => {
             if (operacionesPendientes > 0) {
@@ -782,7 +782,7 @@ function actualizarNota(productoId, nota) {
     const itemIndex = pedidoActual.findIndex(p => p.id === productoId);
     if (itemIndex >= 0) {
         pedidoActual[itemIndex].nota = nota;
-        
+
         // Optimización (V11): Actualización quirúrgica del DOM en lugar de render completo
         const elNota = document.getElementById(`resumen-nota-${productoId}`);
         if (elNota) {
@@ -950,7 +950,7 @@ async function renderPedidos(container) {
         }
 
         const responses = await Promise.all(promises);
-        
+
         pedidosDelDia = responses[0].pedidos || [];
         if (responses[1]) {
             window.cadetes = responses[1].cadetes || [];
@@ -1012,9 +1012,9 @@ function renderPedidosList(container, pedidos) {
 
     // Contar por estado para los badges (Case-insensitive)
     const conteo = { todos: pedidos.length, pendiente: 0, pagado: 0, entregado: 0, cancelado: 0 };
-    pedidos.forEach(p => { 
+    pedidos.forEach(p => {
         const status = (p.estado || '').toLowerCase();
-        if (conteo[status] !== undefined) conteo[status]++; 
+        if (conteo[status] !== undefined) conteo[status]++;
     });
 
     const estados = [
@@ -1054,20 +1054,20 @@ function renderPedidosList(container, pedidos) {
     }
 
     filtrados.forEach((pedido, index) => {
-            const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
-            const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
-            const entregaBadge = `<span class="badge" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
+        const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
+        const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
+        const entregaBadge = `<span class="badge" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
 
-            // Estado border-left color
-            const borderColors = {
-                pendiente: '#fbbf24',
-                pagado: '#22c55e',
-                cancelado: '#ef4444',
-                entregado: '#8b5cf6'
-            };
-            const borderColor = borderColors[pedido.estado.toLowerCase()] || 'var(--border-color)';
+        // Estado border-left color
+        const borderColors = {
+            pendiente: '#fbbf24',
+            pagado: '#22c55e',
+            cancelado: '#ef4444',
+            entregado: '#8b5cf6'
+        };
+        const borderColor = borderColors[pedido.estado.toLowerCase()] || 'var(--border-color)';
 
-            html += `
+        html += `
                 <div class="card stagger-item" style="animation-delay: ${index * 50}ms; border-left: 4px solid ${borderColor};">
                     <div class="card-header">
                         <div>
@@ -1196,7 +1196,7 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
     // Optimización (V11): UI Optimista - Cambiar estado localmente primero
     const index = pedidosDelDia.findIndex(p => p.id === pedidoId);
     let estadoAnterior = '';
-    
+
     if (index >= 0) {
         estadoAnterior = pedidosDelDia[index].estado;
         pedidosDelDia[index].estado = nuevoEstado;
@@ -1207,12 +1207,12 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
     incPending(); // Iniciar sincronización visual
 
     try {
-        const response = await apiPost({ 
-            action: 'actualizar_estado', 
-            id: pedidoId, 
-            estado: nuevoEstado 
+        const response = await apiPost({
+            action: 'actualizar_estado',
+            id: pedidoId,
+            estado: nuevoEstado
         });
-        
+
         if (response.success) {
             showToast(`Estado actualizado a: ${nuevoEstado}`, 'success');
         } else {
@@ -1330,7 +1330,7 @@ function imprimirPedido(pedido) {
         </head>
         <body>
             <div class="header">
-                <h1>COMANDA DIGITAL</h1>
+                <h1>PURO SABOR</h1>
                 <p>Sistema de Pedidos</p>
             </div>
             
@@ -1695,11 +1695,12 @@ async function renderGestionProductos(container) {
                     <label class="form-label"><i class="fas fa-folder" style="margin-right: 0.25rem;"></i> Categoría</label>
                     <input type="text" id="prod-categoria" class="form-input" list="categorias-list" required>
                     <datalist id="categorias-list">
-                        <option value="Bebidas calientes">
-                        <option value="Bebidas frías">
-                        <option value="Panadería">
-                        <option value="Comidas">
-                        <option value="Postres">
+                        <option value="Menú Trabajador">
+                        <option value="Menú Habitual">
+                        <option value="Platos Principales">
+                        <option value="Combos">
+                        <option value="Guarniciones">
+                        <option value="Viandas">
                     </datalist>
                 </div>
                 
