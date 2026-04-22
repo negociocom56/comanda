@@ -1650,6 +1650,7 @@ async function renderHistorialCajas(container) {
                 <th>💵 Real</th>
                 <th>📊 Dif.</th>
                 <th># Ped.</th>
+                <th><i class="fas fa-comment"></i> Obs.</th>
             </tr>
         `;
 
@@ -1680,6 +1681,7 @@ async function renderHistorialCajas(container) {
                     <td>$${formatCurrency(caja.dineroReal || 0)}</td>
                     <td style="${diferenciaStyle}">${diferenciaText}</td>
                     <td>${caja.cantidadPedidos}</td>
+                    <td style="font-size: 0.8125rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${caja.observaciones || ''}">${caja.observaciones || '-'}</td>
                 </tr>
             `;
         });
