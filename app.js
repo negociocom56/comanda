@@ -624,6 +624,7 @@ function renderHTMLResumenPedido() {
                     <option value="mercadopago">📱 Mercado Pago</option>
                     <option value="efectivo">💵 Efectivo</option>
                     <option value="point">💳 POINT (Posnet)</option>
+                    <option value="transferencia">🏦 Transferencia</option>
                 </select>
             </div>
             
@@ -996,16 +997,25 @@ function renderPedidosList(container, pedidos) {
 
         // Filtro por texto
         if (filtroPedidosBusqueda) {
-            const q = filtroPedidosBusqueda.toLowerCase();
-            const match = (
-                (p.id || '').toLowerCase().includes(q) ||
-                (p.nombre || '').toLowerCase().includes(q) ||
-                (p.celular || '').includes(q) ||
-                (p.domicilio || '').toLowerCase().includes(q) ||
-                (p.observaciones || '').toLowerCase().includes(q) ||
-                (p.estado || '').toLowerCase().includes(q)
+            const q = filtroPedidosBusqueda.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalize = (str) => String(str || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            // Buscar en campos básicos
+            const matchBasico = (
+                normalize(p.id).includes(q) ||
+                normalize(p.nombre).includes(q) ||
+                normalize(p.celular).includes(q) ||
+                normalize(p.domicilio).includes(q) ||
+                normalize(p.observaciones).includes(q) ||
+                normalize(p.estado).includes(q)
             );
-            if (!match) return false;
+
+            // Buscar en items del pedido (V11)
+            const matchItems = (p.items || []).some(item => 
+                normalize(item.producto).includes(q)
+            );
+
+            if (!matchBasico && !matchItems) return false;
         }
         return true;
     });
@@ -1055,7 +1065,13 @@ function renderPedidosList(container, pedidos) {
 
     filtrados.forEach((pedido, index) => {
         const estadoBadge = `<span class="badge badge-${pedido.estado}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>`;
-        const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${pedido.metodoPago === 'mercadopago' ? '<i class="fas fa-qrcode"></i> MP' : pedido.metodoPago === 'point' ? '💳 POINT' : '<i class="fas fa-money-bill"></i> Efectivo'}</span>`;
+        const iconP = {
+            mercadopago: '<i class="fas fa-qrcode"></i> MP',
+            point: '💳 POINT',
+            efectivo: '<i class="fas fa-money-bill"></i> Efectivo',
+            transferencia: '<i class="fas fa-university"></i> Transf.'
+        };
+        const metodoBadge = `<span class="badge badge-${pedido.metodoPago}">${iconP[pedido.metodoPago] || pedido.metodoPago}</span>`;
         const entregaBadge = `<span class="badge" style="background: ${pedido.tipoEntrega === 'retira' ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' : 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'}; color: ${pedido.tipoEntrega === 'retira' ? '#1e40af' : '#9a3412'};">${pedido.tipoEntrega === 'retira' ? '🏠 Retira' : '🚚 Envío'}</span>`;
 
         // Estado border-left color
@@ -1275,7 +1291,8 @@ function imprimirPedido(pedido) {
     `).join('');
 
     const metodoPagoTexto = pedido.metodoPago === 'mercadopago' ? 'Mercado Pago' :
-        pedido.metodoPago === 'point' ? 'POINT (Posnet)' : 'Efectivo';
+        pedido.metodoPago === 'point' ? 'POINT (Posnet)' : 
+        pedido.metodoPago === 'transferencia' ? 'Transferencia' : 'Efectivo';
 
     ventanaImpresion.document.write(`
         <!DOCTYPE html>
@@ -1400,6 +1417,7 @@ async function renderCerrarCaja(container) {
         let totalMP = 0;
         let totalEfectivo = 0;
         let totalPoint = 0;
+        let totalTransferencia = 0;
         let cantidadPedidos = 0;
 
         pedidos.forEach(pedido => {
@@ -1412,11 +1430,13 @@ async function renderCerrarCaja(container) {
                     totalEfectivo += pedido.total;
                 } else if (pedido.metodoPago === 'point') {
                     totalPoint += pedido.total;
+                } else if (pedido.metodoPago === 'transferencia') {
+                    totalTransferencia += pedido.total;
                 }
             }
         });
 
-        const totalGeneral = totalMP + totalEfectivo + totalPoint;
+        const totalGeneral = totalMP + totalEfectivo + totalPoint + totalTransferencia;
 
         // Guardar en variable global para calcularDiferencia
         window.totalGeneralCaja = totalGeneral;
@@ -1446,6 +1466,10 @@ async function renderCerrarCaja(container) {
                         <tr>
                             <td>💳 POINT (Posnet)</td>
                             <td style="text-align: right;"><strong>$${formatCurrency(totalPoint)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>🏦 Transferencia</td>
+                            <td style="text-align: right;"><strong>$${formatCurrency(totalTransferencia)}</strong></td>
                         </tr>
                         <tr style="background: var(--bg-hover);">
                             <td><strong><i class="fas fa-coins"></i> TOTAL</strong></td>
@@ -1611,6 +1635,7 @@ async function renderHistorialCajas(container) {
                 <th>📱 MP</th>
                 <th>💵 Efect.</th>
                 <th>💳 Point</th>
+                <th>🏦 Transf.</th>
                 <th><i class="fas fa-coins"></i> Total</th>
                 <th>💵 Real</th>
                 <th>📊 Dif.</th>
@@ -1640,6 +1665,7 @@ async function renderHistorialCajas(container) {
                     <td>$${formatCurrency(caja.totalMercadoPago || 0)}</td>
                     <td>$${formatCurrency(caja.totalEfectivo || 0)}</td>
                     <td>$${formatCurrency(caja.totalPoint || 0)}</td>
+                    <td>$${formatCurrency(caja.totalTransferencia || 0)}</td>
                     <td><strong style="color: var(--primary-600);">$${formatCurrency(caja.totalGeneral)}</strong></td>
                     <td>$${formatCurrency(caja.dineroReal || 0)}</td>
                     <td style="${diferenciaStyle}">${diferenciaText}</td>
