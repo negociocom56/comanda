@@ -1501,6 +1501,14 @@ async function renderCerrarCaja(container) {
                         <span id="diferencia-monto" style="font-size: 1.125rem; font-weight: 800;"></span>
                     </div>
                 </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label"><i class="fas fa-comment-alt" style="margin-right: 0.25rem;"></i> Observaciones / Justificación de Diferencias</label>
+                    <textarea id="observacionesCaja" class="form-textarea" placeholder="Ej: Se le pagó a los cadetes un importe de $1500..." rows="3"></textarea>
+                    <small class="text-muted" style="display: block; margin-top: 0.375rem; font-size: 0.75rem;">
+                        Justificá cualquier excedente o faltante (opcional)
+                    </small>
+                </div>
             </div>
             
             <button class="btn btn-warning mt-2" onclick="confirmarCierreCaja()">
@@ -1554,6 +1562,7 @@ function calcularDiferencia() {
 
 async function confirmarCierreCaja() {
     const dineroReal = parseFloat(document.getElementById('dineroReal').value) || 0;
+    const observacionesCaja = document.getElementById('observacionesCaja').value.trim();
 
     if (dineroReal === 0) {
         showToast('Por favor ingresá el dinero real en caja', 'error');
@@ -1580,7 +1589,8 @@ async function confirmarCierreCaja() {
     try {
         const response = await apiPost({
             action: 'cerrar_caja',
-            dineroReal: dineroReal
+            dineroReal: dineroReal,
+            observaciones: observacionesCaja
         });
 
         hideLoading();
