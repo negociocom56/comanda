@@ -198,24 +198,52 @@ function isAuthenticated() {
     return true;
 }
 
-function login() {
-    const userInput = document.getElementById('login-user').value;
-    const passInput = document.getElementById('login-pass').value;
+async function login() {
+    const userInput = document.getElementById('login-user').value.trim();
+    const passInput = document.getElementById('login-pass').value.trim();
 
-    if (btoa(userInput) === CRED_USER && btoa(passInput) === CRED_PASS) {
-        localStorage.setItem('comanda_auth', 'true');
-        localStorage.setItem('comanda_auth_time', new Date().getTime().toString());
-        showToast('✅ Bienvenido al sistema', 'success');
-        location.hash = 'home';
-    } else {
-        showToast('Credenciales incorrectas', 'error');
-        // Shake animation on login card
-        const card = document.querySelector('.login-card');
-        if (card) {
-            card.style.animation = 'none';
-            card.offsetHeight; // trigger reflow
-            card.style.animation = 'shake 0.4s ease-in-out';
+    if (!userInput || !passInput) {
+        showToast('Completá ambos campos', 'error');
+        return;
+    }
+
+    const btnLogin = document.querySelector('.login-card .btn-primary');
+    const originalText = btnLogin.innerHTML;
+    btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando...';
+    btnLogin.disabled = true;
+
+    try {
+        const response = await apiPost({
+            action: 'login',
+            username: userInput,
+            password: passInput
+        });
+
+        if (response.success) {
+            localStorage.setItem('comanda_auth', 'true');
+            localStorage.setItem('comanda_auth_time', new Date().getTime().toString());
+            localStorage.setItem('comanda_rol', response.rol);
+            showToast('✅ Bienvenido al sistema', 'success');
+            location.hash = 'home';
+        } else {
+            showToast(response.error || 'Credenciales incorrectas', 'error');
+            shakeLoginCard();
         }
+    } catch (error) {
+        showToast('Error de conexión: ' + error.message, 'error');
+        shakeLoginCard();
+    } finally {
+        btnLogin.innerHTML = originalText;
+        btnLogin.disabled = false;
+    }
+}
+
+function shakeLoginCard() {
+    const card = document.querySelector('.login-card');
+    if (card) {
+        card.style.animation = 'none';
+        card.offsetHeight; // trigger reflow
+        card.style.animation = 'shake 0.4s ease-in-out';
     }
 }
 
