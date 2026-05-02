@@ -1,7 +1,9 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7wW5GkeimTH0RSTxjL8ckv65whDLfasxW_1cebG9o4Yfj3Bjd8tONoBYGNvTMNeLBtg/exec';
+// NOTA IMPORTANTE: Reemplaza esta URL por la URL real donde subiste tu api.php en Hostinger
+// Ejemplo: 'https://midominio.com/api.php' o 'https://micuenta.hostinger.com/api.php'
+const APPS_SCRIPT_URL = 'https://synergydev.com.ar/PScomanda/api.php';
 
 // ============================================
 // BANNER CONFIGURABLE — Cambiar según cliente
@@ -1879,9 +1881,7 @@ async function apiGet(path, params = {}) {
         targetUrl.searchParams.append(key, params[key]);
     }
 
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
-
-    const response = await fetch(proxyUrl);
+    const response = await fetch(targetUrl.toString());
 
     if (!response.ok) {
         throw new Error('Error en la petición');
@@ -1891,13 +1891,11 @@ async function apiGet(path, params = {}) {
 }
 
 async function apiPost(data) {
-    // Agregar timestamp para evitar caché del proxy
+    // Agregar timestamp para evitar caché
     const targetUrl = new URL(APPS_SCRIPT_URL);
     targetUrl.searchParams.append('_t', new Date().getTime());
 
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
-
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(targetUrl.toString(), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
