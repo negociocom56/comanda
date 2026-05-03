@@ -2047,12 +2047,12 @@ h2::before {
 .cart-drawer-body {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    /* Evitar que el panel haga scroll la página entera */
+    /* Evitar que flexbox encoja los hijos (lo que causaba el corte) */
+    display: block; 
     overscroll-behavior: contain;
+    padding-bottom: 6rem; /* Margen extra inferior para scrolling cómodo */
 }
 
 @media (max-width: 480px) {
