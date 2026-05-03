@@ -578,16 +578,38 @@ async function renderNuevoPedido(container) {
     }
 
     html += '</div>';
-    html += '<div id="seccion-resumen-pedido">';
+    html += '</div>';
 
-    const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
+    // Floating cart button and drawer markup
+    html += `
+        <button class="floating-cart-btn" id="floatingCartBtn" style="display: none;" onclick="abrirCarrito()">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="badge-count" id="floatingCartCount">0</span>
+            <span id="floatingCartTotal">$0</span>
+        </button>
 
-    if (itemsCount > 0) {
-        html += renderHTMLResumenPedido();
-    }
-
-    html += '</div></div>';
+        <div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="cerrarCarrito()"></div>
+        <div class="cart-drawer" id="cartDrawer">
+            <div class="cart-drawer-header">
+                <h3><i class="fas fa-shopping-cart"></i> Tu Pedido</h3>
+                <button class="cart-drawer-close" onclick="cerrarCarrito()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="cart-drawer-body" id="seccion-resumen-pedido">
+                <!-- El contenido de renderHTMLResumenPedido se inyectará aquí -->
+            </div>
+        </div>
+    </div>`;
+    
     container.innerHTML = html;
+
+    // Actualizar estado inicial del carrito flotante
+    const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
+    if (itemsCount > 0) {
+        document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();
+        actualizarBotonFlotante();
+    }
 }
 
 // Genera solo el HTML del resumen y datos del cliente (V10)
@@ -727,7 +749,7 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
         }
     }
 
-    // 3. Actualizar resumen inferior
+    // 3. Actualizar resumen inferior (ahora en el panel lateral)
     const seccionResumen = document.getElementById('seccion-resumen-pedido');
     if (seccionResumen) {
         const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
@@ -747,22 +769,56 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
             if (celular) document.getElementById('celularCliente').value = celular;
             if (tipo) {
                 document.getElementById('tipoEntrega').value = tipo;
-                if (tipo === 'envio') document.getElementById('domicilio-group').classList.remove('hidden');
+                if (tipo === 'envio') document.getElementById('domicilio-group')?.classList.remove('hidden');
             }
             if (domi) document.getElementById('domicilioCliente').value = domi;
             if (obs) document.getElementById('observaciones').value = obs;
             if (pago) document.getElementById('metodoPago').value = pago;
         } else {
-            seccionResumen.innerHTML = `
-                <div class="card text-center" style="padding: 2.5rem 1.5rem;">
-                    <div style="width: 64px; height: 64px; background: var(--bg-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
-                        <i class="fas fa-shopping-basket" style="font-size: 2rem; color: var(--text-muted);"></i>
-                    </div>
-                    <p class="text-muted" style="font-size: 1rem;">Agregá productos al pedido usando los botones +</p>
-                </div>
-            `;
+            seccionResumen.innerHTML = '';
+            cerrarCarrito(); // Si se vacía el carrito, lo cerramos
         }
     }
+
+    // 4. Actualizar botón flotante
+    actualizarBotonFlotante();
+}
+
+function actualizarBotonFlotante() {
+    const btn = document.getElementById('floatingCartBtn');
+    const countEl = document.getElementById('floatingCartCount');
+    const totalEl = document.getElementById('floatingCartTotal');
+    
+    if (!btn || !countEl || !totalEl) return;
+
+    const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
+    const total = calcularTotal();
+
+    if (itemsCount > 0) {
+        btn.style.display = 'flex';
+        countEl.textContent = itemsCount;
+        totalEl.textContent = '$' + formatCurrency(total);
+        
+        // Animación sutil
+        btn.style.transform = 'scale(1.05)';
+        setTimeout(() => btn.style.transform = '', 200);
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function abrirCarrito() {
+    document.getElementById('cartDrawer').classList.add('active');
+    document.getElementById('cartDrawerOverlay').classList.add('active');
+    // Prevenir scroll en el body
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarCarrito() {
+    document.getElementById('cartDrawer').classList.remove('active');
+    document.getElementById('cartDrawerOverlay').classList.remove('active');
+    // Restaurar scroll
+    document.body.style.overflow = '';
 }
 
 async function cargarProductos() {
