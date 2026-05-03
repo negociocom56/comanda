@@ -111,6 +111,9 @@ function renderPage() {
         clockInterval = null;
     }
 
+    // Asegurar que el body vuelva a poder hacer scroll (por si quedó bloqueado por el carrito)
+    document.body.style.overflow = '';
+
     // (V9) Login Check
     if (!isAuthenticated() && page !== 'login') {
         location.hash = 'login';
@@ -935,6 +938,7 @@ async function confirmarPedido() {
         hideLoading();
 
         if (response.success) {
+            cerrarCarrito(); // Ocultar el panel del carrito tras confirmar
             if (metodoPago === 'mercadopago' && response.linkPago) {
                 mostrarLinkPago(response);
             } else {

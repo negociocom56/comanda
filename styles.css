@@ -1313,7 +1313,7 @@ table tr:nth-child(even):hover td {
     padding: 0.875rem 1.5rem;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-2xl);
-    z-index: 1000;
+    z-index: 2000; /* Alto z-index para que aparezca sobre el panel lateral oscuro */
     transition: transform var(--transition-slow);
     max-width: 90%;
     display: flex;
