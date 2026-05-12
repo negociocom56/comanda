@@ -1190,6 +1190,7 @@ function renderPedidosList(container, pedidos) {
                     </div>
                     <div style="text-align: right; display: flex; flex-direction: column; gap: 0.375rem; align-items: flex-end;">
                         <span class="badge badge-${pedido.estado.toLowerCase()}"><i class="fas fa-circle" style="font-size: 0.375rem;"></i> ${pedido.estado.toUpperCase()}</span>
+                        ${pedido.origen === 'menu' ? '<span class="badge" style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #166534; font-size: 0.6875rem;">📱 Menú Digital</span>' : ''}
                         ${metodoBadge}
                         ${entregaBadge}
                     </div>
@@ -1200,6 +1201,7 @@ function renderPedidosList(container, pedidos) {
                             ${pedido.items.map(item => `
                                 <li style="margin-bottom: 0.25rem;">
                                     ${item.cantidad}x ${item.producto} — <strong>$${formatCurrency(item.cantidad * item.precio)}</strong>
+                                    ${item.guarnicion && item.guarnicion.length > 0 ? `<br><small style="color: var(--primary-600); margin-left: 10px;">🥗 ${Array.isArray(item.guarnicion) ? item.guarnicion.join(', ') : item.guarnicion}</small>` : ''}
                                     ${item.nota ? `<br><small style="font-style: italic; color: var(--primary-600); margin-left: 10px;">• ${item.nota}</small>` : ''}
                                 </li>
                             `).join('')}
