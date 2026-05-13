@@ -1531,6 +1531,13 @@ function imprimirPedido(pedido) {
                 <p>Método: ${metodoPagoTexto}</p>
                 <div class="total">TOTAL: $${formatCurrency(pedido.total)}</div>
             </div>
+
+            ${pedido.cadete ? `
+            <div class="section">
+                <div class="section-title">CADETE</div>
+                <p><strong>${window.cadetes?.find(c => String(c.id) === String(pedido.cadete))?.nombre || pedido.cadete}</strong></p>
+            </div>
+            ` : ''}
             
             <div class="footer">
                 <p>¡Gracias por su compra!</p>
