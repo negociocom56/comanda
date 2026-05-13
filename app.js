@@ -666,6 +666,24 @@ function renderHTMLResumenPedido() {
             <div class="form-group hidden" id="domicilio-group">
                 <label class="form-label"><i class="fas fa-map-marker-alt" style="margin-right: 0.25rem;"></i> Domicilio de Entrega</label>
                 <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
+                
+                <label class="form-label" style="margin-top: 0.5rem;"><i class="fas fa-map" style="margin-right: 0.25rem;"></i> Zona de Entrega</label>
+                <select id="zonaEntrega" class="form-select" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                    <option value="principal">📍 Área principal (Sin cargo)</option>
+                    <option value="extendida">🛵 Zona extendida (+$700)</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="background: var(--bg-hover); padding: 12px; border-radius: var(--radius-md);">
+                <label style="font-weight: 700; margin-bottom: 8px; display: block;">OPCIONES EXTRA</label>
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer; font-size:0.9rem;">
+                    <input type="number" id="opt-cubiertos" value="0" min="0" max="50" style="width: 50px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; text-align: center; accent-color:var(--primary-600);" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                    Cantidad de cubiertos (+$200 c/u)
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.9rem;">
+                    <input type="checkbox" id="opt-envio-prio" style="width:18px; height:18px; accent-color:var(--primary-600);" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                    Envío prioritario (+$2000)
+                </label>
             </div>
             
             <div class="form-group">
@@ -764,6 +782,9 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
             const domi = document.getElementById('domicilioCliente')?.value;
             const obs = document.getElementById('observaciones')?.value;
             const pago = document.getElementById('metodoPago')?.value;
+            const zona = document.getElementById('zonaEntrega')?.value;
+            const cubiertos = document.getElementById('opt-cubiertos')?.value;
+            const prio = document.getElementById('opt-envio-prio')?.checked;
 
             seccionResumen.innerHTML = renderHTMLResumenPedido();
 
@@ -777,6 +798,9 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
             if (domi) document.getElementById('domicilioCliente').value = domi;
             if (obs) document.getElementById('observaciones').value = obs;
             if (pago) document.getElementById('metodoPago').value = pago;
+            if (zona) document.getElementById('zonaEntrega').value = zona;
+            if (cubiertos !== undefined) document.getElementById('opt-cubiertos').value = cubiertos;
+            if (prio !== undefined) document.getElementById('opt-envio-prio').checked = prio;
         } else {
             seccionResumen.innerHTML = '';
             cerrarCarrito(); // Si se vacía el carrito, lo cerramos
@@ -888,7 +912,17 @@ function actualizarNota(productoId, nota) {
 }
 
 function calcularTotal() {
-    return pedidoActual.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+    let base = pedidoActual.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+    const tipoEntrega = document.getElementById('tipoEntrega')?.value;
+    const zona = document.getElementById('zonaEntrega')?.value;
+    const cubiertos = parseInt(document.getElementById('opt-cubiertos')?.value || 0);
+    const prio = document.getElementById('opt-envio-prio')?.checked;
+
+    if (tipoEntrega === 'envio' && zona === 'extendida') base += 700;
+    if (cubiertos > 0) base += 200 * cubiertos;
+    if (prio) base += 2000;
+
+    return base;
 }
 
 async function confirmarPedido() {
@@ -922,6 +956,10 @@ async function confirmarPedido() {
 
     showLoading();
 
+    const zona = document.getElementById('zonaEntrega')?.value;
+    const cubiertos = parseInt(document.getElementById('opt-cubiertos')?.value || 0);
+    const prio = document.getElementById('opt-envio-prio')?.checked;
+
     try {
         const response = await apiPost({
             action: 'crear_pedido',
@@ -932,7 +970,12 @@ async function confirmarPedido() {
             nombre: nombre,
             domicilio: domicilio,
             celular: celular,
-            tipoEntrega: tipoEntrega
+            tipoEntrega: tipoEntrega,
+            extras: {
+                zonaExtendida: tipoEntrega === 'envio' && zona === 'extendida',
+                cubiertos: cubiertos,
+                envioPrio: prio
+            }
         });
 
         hideLoading();
@@ -1293,6 +1336,12 @@ function renderBotonesEstado(pedido) {
         botones += `
             <button class="btn btn-small btn-primary" onclick="cambiarEstado('${pedido.id}', 'entregado')">
                 <i class="fas fa-box"></i> Entregado
+            </button>
+            <button class="btn btn-small" style="background-color: #f59e0b; color: #fff;" onclick="cambiarEstado('${pedido.id}', 'pendiente')">
+                <i class="fas fa-undo"></i> Revertir a Pendiente
+            </button>
+            <button class="btn btn-small btn-danger" onclick="cambiarEstado('${pedido.id}', 'cancelado')">
+                <i class="fas fa-times"></i> Cancelar
             </button>
         `;
     }
