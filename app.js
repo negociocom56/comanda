@@ -1846,7 +1846,39 @@ async function renderGestionProductos(container) {
                     </label>
                 </div>
                 
-                <div style="display: flex; gap: 0.625rem;">
+                <h4 style="margin-top: 1.5rem; margin-bottom: 1rem; color: var(--primary-600);"><i class="fas fa-mobile-alt"></i> Datos para Menú Digital</h4>
+                
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-image" style="margin-right: 0.25rem;"></i> URL de Imagen</label>
+                    <input type="text" id="prod-img" class="form-input" placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-align-left" style="margin-right: 0.25rem;"></i> Descripción</label>
+                    <textarea id="prod-desc" class="form-input" rows="2" placeholder="Detalles del producto..."></textarea>
+                </div>
+
+                <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label"><i class="fas fa-boxes" style="margin-right: 0.25rem;"></i> Stock</label>
+                        <input type="number" id="prod-stock" class="form-input" value="-1" min="-1" title="-1 para infinito">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label"><i class="fas fa-sort-numeric-down" style="margin-right: 0.25rem;"></i> Orden</label>
+                        <input type="number" id="prod-sortOrder" class="form-input" value="0" min="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label"><i class="fas fa-utensils" style="margin-right: 0.25rem;"></i> Máx Guarniciones</label>
+                        <input type="number" id="prod-sidesLimit" class="form-input" value="1" min="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-list" style="margin-right: 0.25rem;"></i> Guarniciones Permitidas (separadas por coma)</label>
+                    <input type="text" id="prod-allowedSides" class="form-input" placeholder="Ej: Papas Fritas, Arroz Amarillo">
+                </div>
+                
+                <div style="display: flex; gap: 0.625rem; margin-top: 1.5rem;">
                     <button class="btn btn-success" onclick="guardarProducto()" style="flex: 1;">
                         <i class="fas fa-save"></i> Guardar
                     </button>
@@ -1904,6 +1936,14 @@ function mostrarFormularioProducto(producto = null) {
     document.getElementById('prod-categoria').value = producto ? producto.categoria : '';
     document.getElementById('prod-precio').value = producto ? producto.precio : '';
     document.getElementById('prod-activo').checked = producto ? producto.activo : true;
+    
+    // Nuevos campos Smart Menu
+    document.getElementById('prod-img').value = producto ? (producto.img || '') : '';
+    document.getElementById('prod-desc').value = producto ? (producto.descripcion || '') : '';
+    document.getElementById('prod-stock').value = producto && producto.stock !== undefined ? producto.stock : -1;
+    document.getElementById('prod-sortOrder').value = producto && producto.sortOrder !== undefined ? producto.sortOrder : 0;
+    document.getElementById('prod-sidesLimit').value = producto && producto.sidesLimit !== undefined ? producto.sidesLimit : 1;
+    document.getElementById('prod-allowedSides').value = producto ? (producto.allowedSides || '') : '';
 
     titulo.innerHTML = producto
         ? '<i class="fas fa-edit" style="color: var(--primary-600);"></i> Editar Producto'
@@ -1927,6 +1967,13 @@ async function guardarProducto() {
     const precio = document.getElementById('prod-precio').value;
     const activo = document.getElementById('prod-activo').checked;
 
+    const img = document.getElementById('prod-img').value.trim();
+    const descripcion = document.getElementById('prod-desc').value.trim();
+    const stock = document.getElementById('prod-stock').value;
+    const sortOrder = document.getElementById('prod-sortOrder').value;
+    const sidesLimit = document.getElementById('prod-sidesLimit').value;
+    const allowedSides = document.getElementById('prod-allowedSides').value.trim();
+
     if (!nombre || !categoria || !precio) {
         showToast('Completá todos los campos obligatorios', 'error');
         return;
@@ -1941,7 +1988,13 @@ async function guardarProducto() {
             nombre: nombre,
             categoria: categoria,
             precio: Number(precio),
-            activo: activo
+            activo: activo,
+            img: img,
+            descripcion: descripcion,
+            stock: Number(stock),
+            sortOrder: Number(sortOrder),
+            sidesLimit: Number(sidesLimit),
+            allowedSides: allowedSides
         });
 
         hideLoading();
