@@ -1796,6 +1796,7 @@ async function renderGestionProductos(container) {
     try {
         const response = await apiGet('productos_admin');
         const todosProductos = response.productos || [];
+        window.todasGuarniciones = response.guarniciones || [];
 
         productos = todosProductos.filter(p => p.activo);
 
@@ -1810,11 +1811,15 @@ async function renderGestionProductos(container) {
                 </button>
             </div>
             
-            <div id="formulario-producto" class="card mb-2 hidden" style="border-left: 4px solid var(--primary-600);">
-                <h3 id="form-titulo" style="margin-bottom: 1.25rem; font-size: 1.0625rem;">
-                    <i class="fas fa-box" style="color: var(--primary-600);"></i> Nuevo Producto
-                </h3>
-                <input type="hidden" id="prod-id">
+            <div id="modal-producto" class="modal-overlay" onclick="if(event.target === this) ocultarFormularioProducto()">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="form-titulo" class="modal-title">
+                            <i class="fas fa-box"></i> Nuevo Producto
+                        </h3>
+                        <button onclick="ocultarFormularioProducto()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);"><i class="fas fa-times"></i></button>
+                    </div>
+                    <input type="hidden" id="prod-id">
                 
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-tag" style="margin-right: 0.25rem;"></i> Nombre</label>
@@ -1874,8 +1879,10 @@ async function renderGestionProductos(container) {
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label"><i class="fas fa-list" style="margin-right: 0.25rem;"></i> Guarniciones Permitidas (separadas por coma)</label>
-                    <input type="text" id="prod-allowedSides" class="form-input" placeholder="Ej: Papas Fritas, Arroz Amarillo">
+                    <label class="form-label"><i class="fas fa-list" style="margin-right: 0.25rem;"></i> Guarniciones Permitidas</label>
+                    <div id="guarniciones-checkboxes" class="guarniciones-grid">
+                        <!-- Generado dinámicamente -->
+                    </div>
                 </div>
                 
                 <div style="display: flex; gap: 0.625rem; margin-top: 1.5rem;">
@@ -1885,6 +1892,7 @@ async function renderGestionProductos(container) {
                     <button class="btn btn-secondary" onclick="ocultarFormularioProducto()" style="flex: 1;">
                         <i class="fas fa-times"></i> Cancelar
                     </button>
+                </div>
                 </div>
             </div>
 
@@ -1929,7 +1937,7 @@ async function renderGestionProductos(container) {
 }
 
 function mostrarFormularioProducto(producto = null) {
-    const form = document.getElementById('formulario-producto');
+    const modal = document.getElementById('modal-producto');
     const titulo = document.getElementById('form-titulo');
     document.getElementById('prod-id').value = producto ? producto.id : '';
     document.getElementById('prod-nombre').value = producto ? producto.nombre : '';
@@ -1943,17 +1951,33 @@ function mostrarFormularioProducto(producto = null) {
     document.getElementById('prod-stock').value = producto && producto.stock !== undefined ? producto.stock : -1;
     document.getElementById('prod-sortOrder').value = producto && producto.sortOrder !== undefined ? producto.sortOrder : 0;
     document.getElementById('prod-sidesLimit').value = producto && producto.sidesLimit !== undefined ? producto.sidesLimit : 1;
-    document.getElementById('prod-allowedSides').value = producto ? (producto.allowedSides || '') : '';
+    
+    // Generar checkboxes para guarniciones
+    const allowedSidesArray = producto && producto.allowedSides ? producto.allowedSides.split(',').map(s => s.trim()) : [];
+    const container = document.getElementById('guarniciones-checkboxes');
+    if (window.todasGuarniciones && window.todasGuarniciones.length > 0) {
+        container.innerHTML = window.todasGuarniciones.map(g => {
+            const isChecked = allowedSidesArray.includes(g.nombre) ? 'checked' : '';
+            return \`
+                <label class="guarnicion-item">
+                    <input type="checkbox" value="\${g.nombre}" \${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary-600);">
+                    \${g.nombre}
+                </label>
+            \`;
+        }).join('');
+    } else {
+        container.innerHTML = '<span class="text-muted" style="font-size:0.85rem;">No hay guarniciones configuradas.</span>';
+    }
 
     titulo.innerHTML = producto
-        ? '<i class="fas fa-edit" style="color: var(--primary-600);"></i> Editar Producto'
-        : '<i class="fas fa-plus-circle" style="color: var(--primary-600);"></i> Nuevo Producto';
-    form.classList.remove('hidden');
-    form.scrollIntoView({ behavior: 'smooth' });
+        ? '<i class="fas fa-edit"></i> Editar Producto'
+        : '<i class="fas fa-plus-circle"></i> Nuevo Producto';
+    
+    modal.classList.add('active');
 }
 
 function ocultarFormularioProducto() {
-    document.getElementById('formulario-producto').classList.add('hidden');
+    document.getElementById('modal-producto').classList.remove('active');
 }
 
 function editarProducto(producto) {
@@ -1972,7 +1996,11 @@ async function guardarProducto() {
     const stock = document.getElementById('prod-stock').value;
     const sortOrder = document.getElementById('prod-sortOrder').value;
     const sidesLimit = document.getElementById('prod-sidesLimit').value;
-    const allowedSides = document.getElementById('prod-allowedSides').value.trim();
+    
+    // Recolectar checkboxes seleccionados
+    const checkboxes = document.querySelectorAll('#guarniciones-checkboxes input[type="checkbox"]:checked');
+    const allowedSidesArr = Array.from(checkboxes).map(cb => cb.value);
+    const allowedSides = allowedSidesArr.join(',');
 
     if (!nombre || !categoria || !precio) {
         showToast('Completá todos los campos obligatorios', 'error');
