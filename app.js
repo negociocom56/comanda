@@ -668,7 +668,7 @@ function renderHTMLResumenPedido() {
                 <input type="text" id="domicilioCliente" class="form-input" placeholder="Calle y número">
                 
                 <label class="form-label" style="margin-top: 0.5rem;"><i class="fas fa-map" style="margin-right: 0.25rem;"></i> Zona de Entrega</label>
-                <select id="zonaEntrega" class="form-select" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                <select id="zonaEntrega" class="form-select" onchange="actualizarResumenCarrito()">
                     <option value="principal">📍 Área principal (Sin cargo)</option>
                     <option value="extendida">🛵 Zona extendida (+$700)</option>
                 </select>
@@ -677,11 +677,11 @@ function renderHTMLResumenPedido() {
             <div class="form-group" style="background: var(--bg-hover); padding: 12px; border-radius: var(--radius-md);">
                 <label style="font-weight: 700; margin-bottom: 8px; display: block;">OPCIONES EXTRA</label>
                 <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer; font-size:0.9rem;">
-                    <input type="number" id="opt-cubiertos" value="0" min="0" max="50" style="width: 50px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; text-align: center; accent-color:var(--primary-600);" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                    <input type="number" id="opt-cubiertos" value="0" min="0" max="50" style="width: 50px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; text-align: center; accent-color:var(--primary-600);" onchange="actualizarResumenCarrito()">
                     Cantidad de cubiertos (+$200 c/u)
                 </label>
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.9rem;">
-                    <input type="checkbox" id="opt-envio-prio" style="width:18px; height:18px; accent-color:var(--primary-600);" onchange="actualizarBotonFlotante(); document.getElementById('seccion-resumen-pedido').innerHTML = renderHTMLResumenPedido();">
+                    <input type="checkbox" id="opt-envio-prio" style="width:18px; height:18px; accent-color:var(--primary-600);" onchange="actualizarResumenCarrito()">
                     Envío prioritario (+$2000)
                 </label>
             </div>
@@ -771,41 +771,48 @@ function actualizarUIDespuesDeCambioCantidad(productoId) {
     }
 
     // 3. Actualizar resumen inferior (ahora en el panel lateral)
+    actualizarResumenCarrito();
+}
+
+function actualizarResumenCarrito() {
     const seccionResumen = document.getElementById('seccion-resumen-pedido');
-    if (seccionResumen) {
-        const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
-        if (itemsCount > 0) {
-            // Preservar valores de los inputs si ya existen
-            const nombre = document.getElementById('nombreCliente')?.value;
-            const celular = document.getElementById('celularCliente')?.value;
-            const tipo = document.getElementById('tipoEntrega')?.value;
-            const domi = document.getElementById('domicilioCliente')?.value;
-            const obs = document.getElementById('observaciones')?.value;
-            const pago = document.getElementById('metodoPago')?.value;
-            const zona = document.getElementById('zonaEntrega')?.value;
-            const cubiertos = document.getElementById('opt-cubiertos')?.value;
-            const prio = document.getElementById('opt-envio-prio')?.checked;
+    if (!seccionResumen) return;
 
-            seccionResumen.innerHTML = renderHTMLResumenPedido();
-
-            // Restaurar valores
-            if (nombre) document.getElementById('nombreCliente').value = nombre;
-            if (celular) document.getElementById('celularCliente').value = celular;
-            if (tipo) {
-                document.getElementById('tipoEntrega').value = tipo;
-                if (tipo === 'envio') document.getElementById('domicilio-group')?.classList.remove('hidden');
-            }
-            if (domi) document.getElementById('domicilioCliente').value = domi;
-            if (obs) document.getElementById('observaciones').value = obs;
-            if (pago) document.getElementById('metodoPago').value = pago;
-            if (zona) document.getElementById('zonaEntrega').value = zona;
-            if (cubiertos !== undefined) document.getElementById('opt-cubiertos').value = cubiertos;
-            if (prio !== undefined) document.getElementById('opt-envio-prio').checked = prio;
-        } else {
-            seccionResumen.innerHTML = '';
-            cerrarCarrito(); // Si se vacía el carrito, lo cerramos
-        }
+    const itemsCount = pedidoActual.reduce((sum, item) => sum + item.cantidad, 0);
+    if (itemsCount === 0) {
+        seccionResumen.innerHTML = '';
+        cerrarCarrito();
+        actualizarBotonFlotante();
+        return;
     }
+
+    // 1. Preservar valores de los inputs si ya existen
+    const nombre = document.getElementById('nombreCliente')?.value;
+    const celular = document.getElementById('celularCliente')?.value;
+    const tipo = document.getElementById('tipoEntrega')?.value;
+    const domi = document.getElementById('domicilioCliente')?.value;
+    const obs = document.getElementById('observaciones')?.value;
+    const pago = document.getElementById('metodoPago')?.value;
+    const zona = document.getElementById('zonaEntrega')?.value;
+    const cubiertos = document.getElementById('opt-cubiertos')?.value;
+    const prio = document.getElementById('opt-envio-prio')?.checked;
+
+    // 2. Re-renderizar HTML
+    seccionResumen.innerHTML = renderHTMLResumenPedido();
+
+    // 3. Restaurar valores
+    if (nombre) document.getElementById('nombreCliente').value = nombre;
+    if (celular) document.getElementById('celularCliente').value = celular;
+    if (tipo) {
+        document.getElementById('tipoEntrega').value = tipo;
+        if (tipo === 'envio') document.getElementById('domicilio-group')?.classList.remove('hidden');
+    }
+    if (domi) document.getElementById('domicilioCliente').value = domi;
+    if (obs) document.getElementById('observaciones').value = obs;
+    if (pago) document.getElementById('metodoPago').value = pago;
+    if (zona) document.getElementById('zonaEntrega').value = zona;
+    if (cubiertos !== undefined) document.getElementById('opt-cubiertos').value = cubiertos;
+    if (prio !== undefined) document.getElementById('opt-envio-prio').checked = prio;
 
     // 4. Actualizar botón flotante
     actualizarBotonFlotante();
