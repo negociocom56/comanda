@@ -1958,12 +1958,12 @@ function mostrarFormularioProducto(producto = null) {
     if (window.todasGuarniciones && window.todasGuarniciones.length > 0) {
         container.innerHTML = window.todasGuarniciones.map(g => {
             const isChecked = allowedSidesArray.includes(g.nombre) ? 'checked' : '';
-            return \`
+            return `
                 <label class="guarnicion-item">
-                    <input type="checkbox" value="\${g.nombre}" \${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary-600);">
-                    \${g.nombre}
+                    <input type="checkbox" value="${g.nombre}" ${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary-600);">
+                    ${g.nombre}
                 </label>
-            \`;
+            `;
         }).join('');
     } else {
         container.innerHTML = '<span class="text-muted" style="font-size:0.85rem;">No hay guarniciones configuradas.</span>';
