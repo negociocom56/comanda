@@ -1521,8 +1521,8 @@ function imprimirPedido(pedido) {
             
             ${pedido.observaciones ? `
             <div class="section">
-                <div class="section-title">OBSERVACIONES</div>
-                <p>${pedido.observaciones}</p>
+                <div class="section-title">OBSERVACIONES Y EXTRAS</div>
+                <p style="white-space: pre-line; margin: 0;">${pedido.observaciones}</p>
             </div>
             ` : ''}
             
