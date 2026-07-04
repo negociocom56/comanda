@@ -694,7 +694,6 @@ function renderHTMLResumenPedido() {
             <div class="form-group">
                 <label class="form-label"><i class="fas fa-credit-card" style="margin-right: 0.25rem;"></i> Método de Pago</label>
                 <select id="metodoPago" class="form-select">
-                    <option value="mercadopago">📱 Mercado Pago</option>
                     <option value="efectivo">💵 Efectivo</option>
                     <option value="point">💳 POINT (Posnet)</option>
                     <option value="transferencia">🏦 Transferencia</option>
